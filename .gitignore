@@ -1,0 +1,10 @@
+# Folders that contain data
+mnist/images
+celebA
+checkpoints
+cache
+images
+# Eclipse files
+.project
+.settings
+.buildpath
