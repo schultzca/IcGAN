@@ -51,6 +51,9 @@ local function weights_init(m)
 end
 
 local nc = 3
+if opt.dataset == 'mnist' then
+  nc = 1
+end
 local nz = opt.nz
 local ndf = opt.ndf
 local ngf = opt.ngf
@@ -119,7 +122,7 @@ netD:add(SpatialBatchNormalization(ndf * 4)):add(nn.LeakyReLU(0.2, true))
 netD:add(SpatialConvolution(ndf * 4, 1, 4, 4))
 netD:add(nn.Sigmoid())
 -- state size: 1 x 1 x 1
-netD:add(nn.View(1):setNumInputDims(3))
+netD:add(nn.View(1):setNumInputDims(nc))
 -- state size: 1
 
 netD:apply(weights_init)
@@ -135,7 +138,7 @@ optimStateD = {
    beta1 = opt.beta1,
 }
 ----------------------------------------------------------------------------
-local input = torch.Tensor(opt.batchSize, 3, opt.fineSize, opt.fineSize)
+local input = torch.Tensor(opt.batchSize, nc, opt.fineSize, opt.fineSize)
 local noise = torch.Tensor(opt.batchSize, nz, 1, 1)
 local label = torch.Tensor(opt.batchSize)
 local errD, errG

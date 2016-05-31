@@ -27,11 +27,11 @@ os.execute('mkdir -p cache')
 local trainCache = paths.concat(cache, cache_prefix .. '_trainCache.t7')
 
 --------------------------------------------------------------------------------------------
-local loadSize   = {3, opt.loadSize}
-local sampleSize = {3, opt.fineSize}
+local loadSize   = {1, opt.loadSize}
+local sampleSize = {1, opt.fineSize}
 
 local function loadImage(path)
-   local input = image.load(path, 3, 'float')
+   local input = image.load(path, 1, 'float')
    -- find the smaller dimension, and resize it to loadSize[2] (while keeping aspect ratio)
    local iW = input:size(3)
    local iH = input:size(2)
@@ -82,14 +82,14 @@ if paths.filep(trainCache) then
    print('Loading train metadata from cache')
    trainLoader = torch.load(trainCache)
    trainLoader.sampleHookTrain = trainHook
-   trainLoader.loadSize = {3, opt.loadSize, opt.loadSize}
-   trainLoader.sampleSize = {3, sampleSize[2], sampleSize[2]}
+   trainLoader.loadSize = {1, opt.loadSize, opt.loadSize}
+   trainLoader.sampleSize = {1, sampleSize[2], sampleSize[2]}
 else
    print('Creating train metadata')
    trainLoader = dataLoader{
       paths = {opt.data},
-      loadSize = {3, loadSize[2], loadSize[2]},
-      sampleSize = {3, sampleSize[2], sampleSize[2]},
+      loadSize = {1, loadSize[2], loadSize[2]},
+      sampleSize = {1, sampleSize[2], sampleSize[2]},
       split = 100,
       verbose = true
    }
