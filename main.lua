@@ -6,12 +6,12 @@ util = paths.dofile('util.lua')
 opt = {
    dataset = 'lsun',       -- imagenet / lsun / folder
    batchSize = 64,
-   loadSize = 96,
-   fineSize = 64,
+   loadSize = 33, -- 96,
+   fineSize = 32, -- 64,
    nz = 100,               -- #  of dim for Z
    ngf = 64,               -- #  of gen filters in first conv layer
    ndf = 64,               -- #  of discrim filters in first conv layer
-   nThreads = 4,           -- #  of data loading threads to use
+   nThreads = 6,           -- #  of data loading threads to use
    niter = 25,             -- #  of iter at starting learning rate
    lr = 0.0002,            -- initial learning rate for adam
    beta1 = 0.5,            -- momentum term of adam
@@ -62,11 +62,14 @@ local SpatialConvolution = nn.SpatialConvolution
 local SpatialFullConvolution = nn.SpatialFullConvolution
 
 local netG = nn.Sequential()
--- input is Z, going into a convolution
+--[[-- input is Z, going into a convolution
 netG:add(SpatialFullConvolution(nz, ngf * 8, 4, 4))
 netG:add(SpatialBatchNormalization(ngf * 8)):add(nn.ReLU(true))
 -- state size: (ngf*8) x 4 x 4
+-- Alternatively, you could perform a 5x5 convolution with 2 padding 
+-- instead of a 4x4 convolution with 1 padding.
 netG:add(SpatialFullConvolution(ngf * 8, ngf * 4, 4, 4, 2, 2, 1, 1))
+--netG:add(SpatialFullConvolution(nz, ngf * 4, 4, 4, 2, 2, 1, 1))
 netG:add(SpatialBatchNormalization(ngf * 4)):add(nn.ReLU(true))
 -- state size: (ngf*4) x 8 x 8
 netG:add(SpatialFullConvolution(ngf * 4, ngf * 2, 4, 4, 2, 2, 1, 1))
@@ -77,7 +80,23 @@ netG:add(SpatialBatchNormalization(ngf)):add(nn.ReLU(true))
 -- state size: (ngf) x 32 x 32
 netG:add(SpatialFullConvolution(ngf, nc, 4, 4, 2, 2, 1, 1))
 netG:add(nn.Tanh())
--- state size: (nc) x 64 x 64
+-- state size: (nc) x 64 x 64 -- ]]--
+
+-- input is Z, going into a convolution
+netG:add(SpatialFullConvolution(nz, ngf * 4, 4, 4))
+netG:add(SpatialBatchNormalization(ngf * 4)):add(nn.ReLU(true))
+-- state size: (ngf*8) x 4 x 4
+-- Alternatively, you could perform a 5x5 convolution with 2 padding 
+-- instead of a 4x4 convolution with 1 padding.
+netG:add(SpatialFullConvolution(ngf * 4, ngf * 2, 4, 4, 2, 2, 1, 1))
+netG:add(SpatialBatchNormalization(ngf * 2)):add(nn.ReLU(true))
+-- state size: (ngf*4) x 8 x 8
+netG:add(SpatialFullConvolution(ngf * 2, ngf, 4, 4, 2, 2, 1, 1))
+netG:add(SpatialBatchNormalization(ngf)):add(nn.ReLU(true))
+-- state size: (ngf*2) x 16 x 16
+netG:add(SpatialFullConvolution(ngf, nc, 4, 4, 2, 2, 1, 1))
+netG:add(nn.Tanh())
+-- state size: (nc) x 32 x 32
 
 netG:apply(weights_init)
 
@@ -93,10 +112,11 @@ netD:add(SpatialBatchNormalization(ndf * 2)):add(nn.LeakyReLU(0.2, true))
 netD:add(SpatialConvolution(ndf * 2, ndf * 4, 4, 4, 2, 2, 1, 1))
 netD:add(SpatialBatchNormalization(ndf * 4)):add(nn.LeakyReLU(0.2, true))
 -- state size: (ndf*4) x 8 x 8
-netD:add(SpatialConvolution(ndf * 4, ndf * 8, 4, 4, 2, 2, 1, 1))
-netD:add(SpatialBatchNormalization(ndf * 8)):add(nn.LeakyReLU(0.2, true))
+--netD:add(SpatialConvolution(ndf * 4, ndf * 8, 4, 4, 2, 2, 1, 1))
+--netD:add(SpatialBatchNormalization(ndf * 8)):add(nn.LeakyReLU(0.2, true))
 -- state size: (ndf*8) x 4 x 4
-netD:add(SpatialConvolution(ndf * 8, 1, 4, 4))
+--netD:add(SpatialConvolution(ndf * 8, 1, 4, 4))
+netD:add(SpatialConvolution(ndf * 4, 1, 4, 4))
 netD:add(nn.Sigmoid())
 -- state size: 1 x 1 x 1
 netD:add(nn.View(1):setNumInputDims(3))
@@ -221,8 +241,8 @@ for epoch = 1, opt.niter do
       if counter % 10 == 0 and opt.display then
           local fake = netG:forward(noise_vis)
           local real = data:getBatch()
-          disp.image(fake, {win=opt.display_id, title=opt.name})
-          disp.image(real, {win=opt.display_id * 3, title=opt.name})
+          disp.image(fake, {win=opt.display_id, title=opt.name .. '. Generated images'})
+          disp.image(real, {win=opt.display_id*3, title=opt.name .. '. Real images'})
       end
 
       -- logging
