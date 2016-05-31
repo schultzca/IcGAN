@@ -224,7 +224,23 @@ local fGx = function(x)
    return errG, gradParametersG
 end
 
+-- initialize generator and discriminator error display configuration
+local errorData
+local errorDispConfig
+if opt.display then
+  errorData = {}
+  errorDispConfig =
+  {
+    title = 'Generator and discriminator error',
+    win = opt.display_id * 4,
+    labels = {'Batch iterations', 'G error', 'D error'},
+    ylabel = "Error",
+    legend='always'
+  }
+end
+
 -- train
+local batchIterations = 0
 for epoch = 1, opt.niter do
    epoch_tm:reset()
    local counter = 0
@@ -235,7 +251,8 @@ for epoch = 1, opt.niter do
 
       -- (2) Update G network: maximize log(D(G(z)))
       optim.adam(fGx, parametersG, optimStateG)
-
+      
+      batchIterations = batchIterations + 1
       -- display
       counter = counter + 1
       if counter % 10 == 0 and opt.display then
@@ -243,6 +260,15 @@ for epoch = 1, opt.niter do
           local real = data:getBatch()
           disp.image(fake, {win=opt.display_id, title=opt.name .. '. Generated images'})
           disp.image(real, {win=opt.display_id*3, title=opt.name .. '. Real images'})
+          -- display generator and discriminator error
+          table.insert(errorData,
+          {
+            batchIterations, -- x-axis
+            errG, -- y-axis for label1
+            errD -- y-axis for label2
+          })
+          disp.plot(errorData, errorDispConfig)
+          
       end
 
       -- logging
