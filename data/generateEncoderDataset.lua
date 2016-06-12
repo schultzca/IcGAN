@@ -131,12 +131,13 @@ function main()
   local outFile = {
     relativePath = opt.outputFolder..'images/', -- write relative path once, not for every image
     imNames = {},
-    -- Change to torch.Tensor later. Now torch.zeros for debbuging purposes
+    imSize = nil, -- This value will be updated later
     noises = torch.Tensor(nSamplesReal, opt.nz, opt.imsize, opt.imsize)
   }
   
   -- Create as many pairs of generated image and noise vector
   -- as specified by opt.samples.
+  local imageSet
   for i=1,opt.samples,opt.batchSize do
       -- Set noise depending on the type
       if opt.noisetype == 'uniform' then
@@ -146,12 +147,14 @@ function main()
       end
       
       -- Generate images (number specified by opt.batchSize)
-      local imageSet = net:forward(noise)
+      imageSet = net:forward(noise)
 
       -- Save images and update dataset file with image path and its vector noise
       saveData(imageSet, noise, outFile, opt.outputFolder, i)
       print(string.format("%d/%d",torch.ceil(i/opt.batchSize),torch.ceil(opt.samples/opt.batchSize)))
   end
+  
+  outFile.imSize = {imageSet:size(2), imageSet:size(3), imageSet:size(4)}
   
   -- Store Lua table with all the data
   local referenced = false
