@@ -4,6 +4,10 @@ celebA
 checkpoints
 cache
 images
+# Images
+*.png
+# Large files
+*.dmp
 # Eclipse files
 .project
 .settings
