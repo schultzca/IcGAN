@@ -130,11 +130,12 @@ local function getEncoderVAE_GAN(sample, nFiltersBase, outputSize, nConvLayers)
   -- For convolutional layers we are only interested in the third dimension (RGB or grayscale)
     local inputSize = sample:size(1)
     local encoder = nn.Sequential()
-    -- Assuming nFiltersBase = 64
+    -- Assuming nFiltersBase = 64, nConvLayers = 3
     -- 1st Conv layer: 5×5 64 conv. ↓, BNorm, ReLU
     --           Data: 32x32 -> 16x16
     encoder:add(nn.SpatialConvolution(inputSize, nFiltersBase, 5, 5, 2, 2, 2, 2))
-    encoder:add(nn.SpatialBatchNormalization(nFiltersBase)):add(nn.ReLU(true))
+    encoder:add(nn.SpatialBatchNormalization(nFiltersBase))
+    encoder:add(nn.ReLU(true))
     
     -- 2nd Conv layer: 5×5 128 conv. ↓, BNorm, ReLU
     --           Data: 16x16 -> 8x8
@@ -143,20 +144,22 @@ local function getEncoderVAE_GAN(sample, nFiltersBase, outputSize, nConvLayers)
     local nFilters = nFiltersBase
     for i=2,nConvLayers do
         encoder:add(nn.SpatialConvolution(nFilters, nFilters*2, 5, 5, 2, 2, 2, 2))
-        encoder:add(nn.SpatialBatchNormalization(nFilters*2)):add(nn.ReLU(true))
+        encoder:add(nn.SpatialBatchNormalization(nFilters*2))
+        encoder:add(nn.ReLU(true))
         nFilters = nFilters * 2
     end
     
-    -- 4th FC layer: 2048 fully-connected, BNorm, ReLU
+    -- 4th FC layer: 2048 fully-connected
     --         Data: 4x4 -> 16
     encoder:add(nn.View(-1):setNumInputDims(3)) -- reshape data to 2d tensor (samples x the rest)
     -- Assuming squared images and conv layers configuration (kernel, stride and padding) is not changed:
-    --nFilterFC = (imageSize/2^nConvLayers)²*nFiltersLastConvNet= imageSize/2^(nConvLayers-2)*nFiltersLastConvNet
-    local inputFilterFC = sample:size(2)/2^(nConvLayers-2)*nFilters
+    --nFilterFC = (imageSize/2^nConvLayers)²*nFiltersLastConvNet
+    local inputFilterFC = (sample:size(2)/2^nConvLayers)^2*nFilters
     encoder:add(nn.Linear(inputFilterFC, outputSize)) 
-    encoder:add(nn.BatchNormalization(outputSize)):add(nn.ReLU(true))
+    --encoder:add(nn.BatchNormalization(outputSize))
+    --encoder:add(nn.ReLU(true))
     
-    local criterion = nn.DistKLDivCriterion()
+    local criterion = nn.MSECriterion()
     
     return encoder, criterion
 end
