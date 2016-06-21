@@ -234,10 +234,13 @@ function main()
      criterion:cuda()
   end
   
+  local params, gradParams = encoder:getParameters() -- This has to be always done after cuda call
+  
   -- Define optim (general optimizer)
   local errorTrain
   local errorTest
   local function optimFunction(params) -- This function needs to be declared here to avoid using global variables.
+      -- reset gradients (gradients are always accumulated, to accommodat batch methods)
       gradParams:zero()
       
       local outputs = encoder:forward(batchX)
@@ -275,7 +278,10 @@ function main()
           
           batchX, batchY = assignBatches(batchX, batchY, xTrain, yTrain, tmpX, tmpY, batch, opt.batchSize, shuffle)
           
-        
+          if opt.display == 2 and batchIterations % 10 == 0 then
+              display.image(image.toDisplayTensor(batchX,0,torch.round(math.sqrt(opt.batchSize))), {win=2, title='Train mini-batch'})
+          end
+          
           -- Update network
           optim.adam(optimFunction, params, optimState)
           
@@ -293,22 +299,27 @@ function main()
                 errorTest -- y-axis for label2
               })
               display.plot(errorData, errorDispConfig)
+              if opt.display == 2 then
+                  display.image(image.toDisplayTensor(batchX,0,torch.round(math.sqrt(opt.batchSize))), {win=3, title='Test mini-batch'})
+              end
           end
           
           -- Verbose
            -- logging
           if ((batch-1) / opt.batchSize) % 1 == 0 then
              print(('Epoch: [%d][%8d / %8d]\t Time: %.3f  DataTime: %.3f  '
-                       .. '  Error (train): %.4f  Error (test): %.4f'):format(
+             print(('Epoch: [%d][%4d / %4d]  Error (train): %.4f  Error (test): %.4f  '
+                       .. '  Time: %.3f s  Data time: %.3f s'):format(
                      epoch, ((batch-1) / opt.batchSize),
                      math.ceil(nTrainSamples / opt.batchSize),
                      tm:time().real, data_tm:time().real,
                      errorTrain and errorTrain or -1,
-                     errorTest and errorTest or -1))
+                     errorTest and errorTest or -1,
+                     tm:time().real, data_tm:time().real))
          end
          batchIterations = batchIterations + 1
       end
-      print(('End of epoch %d / %d \t Time Taken: %.3f'):format(
+      print(('End of epoch %d / %d \t Time Taken: %.3f s'):format(
             epoch, opt.nEpochs, epoch_tm:time().real))
   end
   -- Store network
