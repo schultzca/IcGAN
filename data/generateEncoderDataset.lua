@@ -11,27 +11,32 @@ util = paths.dofile('../util.lua')
 torch.setdefaulttensortype('torch.FloatTensor')
 --torch.manualSeed(123) -- This only works if gpu == 0
 
-function getParameters()
+local function getParameters()
   local opt = {
-    samples = 10000,          -- total number of samples to generate
+    samples = 100000,          -- total number of samples to generate
     batchSize = 256,         -- number of samples to produce at the same time
     noisetype = 'normal',  -- type of noise distribution (uniform / normal).
     net = 'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
     imsize = 1,            -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px,
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,               -- size of noise vector
-    outputFolder = 'mnist/generatedDataset/', -- path where the dataset will be stored
-    outputFormat = 'binary' -- (binary | ascii) binary is faster, but platform-dependent.
+    nz = 100,              -- size of noise vector
+    outputFolder = 'mnist/generatedDataset2/', -- path where the dataset will be stored
+    outputFormat = 'binary', -- (binary | ascii) binary is faster, but platform-dependent.
+    storeAsTensor = true    -- true -> store images as tensor, false -> store images as images (lossy)
   }
   
   for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
   
   assert(opt.samples >= opt.batchSize, "Batch size (opt.batchSize) can't be greater than number of samples (opt.samples).")
   
+  if not opt.storeAsTensor then
+      print("Warning: creating dataset with storeAsTensor == false. Storing as images instead of tensor is a lossy process.")
+  end
+  
   return opt
 end
 
-function initializeNet(net, opt)
+local function initializeNet(net, opt)
   -- Initializes the net and the input noise.
   -- This involves passing the network to GPU and other optimizations.
   
@@ -46,7 +51,7 @@ function initializeNet(net, opt)
   if opt.gpu > 0 then
       require 'cunn'
       require 'cudnn'
-      net:cuda()
+      net = net:cuda()
       util.cudnn(net)
       noise = noise:cuda()
   else
@@ -54,18 +59,53 @@ function initializeNet(net, opt)
   end
   
   util.optimizeInferenceMemory(net)
+    
+  -- Put network to evaluate mode so batch normalization layers 
+  -- do not change its parameters on test time.
+  net:evaluate()
   
   return net, noise
 end
 
-function createFolder(path)
+local function createFolder(path)
     local state, error
     
     state, error = lfs.mkdir(path)
     assert(state or error == 'File exists',"Couldn't create directory "..path) 
 end
 
-function saveData2Txt(imageSet, noise, path, idx)
+local function initializeOutputFile(opt, nSamplesReal, net)
+  local outFile
+
+  if opt.storeAsTensor then
+      outFile = {
+        storeAsTensor = opt.storeAsTensor,
+        images = nil, -- This value will be updated below
+        imSize = nil, -- This value will be updated below
+        noises = torch.Tensor(nSamplesReal, opt.nz, opt.imsize, opt.imsize)
+      }
+  
+  else
+      outFile = {
+        storeAsTensor = opt.storeAsTensor,
+        relativePath = opt.outputFolder..'images/', -- write relative path once, not for every image
+        imNames = {},
+        imSize = nil, -- This value will be updated below
+        noises = torch.Tensor(nSamplesReal, opt.nz, opt.imsize, opt.imsize)
+      }
+  end
+  
+  -- Input noise to the net to know the output image size
+  local noise = outFile.noises[{{1},{},{},{}}]
+  if opt.gpu > 0 then noise = noise:cuda() end 
+  local imSize = net:forward(noise):size() 
+  outFile.imSize = {imSize[2], imSize[3], imSize[4]}
+  if opt.storeAsTensor then outFile.images = torch.Tensor(nSamplesReal, imSize[2], imSize[3], imSize[4]) end
+  
+  return outFile
+end
+
+local function saveData2Txt(imageSet, noise, path, idx)
 -- imageSet dimension: # of images x im3 x im2 x im1
 -- noise: # of images x nz x 1 x 1
 -- path: folder where the images will be stored
@@ -89,24 +129,31 @@ function saveData2Txt(imageSet, noise, path, idx)
     file:close()
 end
 
-function saveData(imageSet, noise, outFile, path, idx)
+local function saveData(imageSet, noise, outFile, path, storeAsTensor, idx)
 -- imageSet dimension: # of images x im3 x im2 x im1
 -- noise: # of images x nz x 1 x 1
 -- path: folder where the images will be stored
--- idx: index used to name the image file
-
-    for j=1,imageSet:size(1) do
-        local i = idx+j-1
-        local imageName = string.format("%.7d.png",i)
-        local imagePath = path..'images/'..imageName
-        local im = imageSet[{{j},{},{},{}}]
-        -- Save image
-        im:resize(im:size(2), im:size(3), im:size(4)) -- 4 to 3 dimensions
-        image.save(imagePath, im)
-        -- Update output file
-        outFile.imNames[i] = imageName
-        outFile.noises[{{i},{},{},{}}] = noise[{{j},{},{},{}}]:float() -- float() is necessary in case noise is in GPU
+-- idx: base index to know where to store things in outFile
+    
+    if not storeAsTensor then
+        for j=1,imageSet:size(1) do
+            local i = idx+j-1
+            local imageName = string.format("%.7d.png",i)
+            local imagePath = path..'images/'..imageName
+            local im = imageSet[{{j},{},{},{}}]
+            -- Save image
+            im:resize(im:size(2), im:size(3), im:size(4)) -- 4 to 3 dimensions
+            image.save(imagePath, im)
+            -- Update output file with image paths
+            outFile.imNames[i] = imageName
+        end
+    else
+        -- Update output file with image tensors
+        outFile.images[{{idx,idx+imageSet:size(1)-1},{},{},{}}] = imageSet:float() -- float() is necessary in case noise is in GPU
     end
+    -- Update output file with noise
+    outFile.noises[{{idx,idx+imageSet:size(1)-1},{},{},{}}] = noise:float() -- float() is necessary in case noise is in GPU
+  
 end
 
 function main()
@@ -121,20 +168,19 @@ function main()
   
   -- Create output folder path and other subfolders
   createFolder(opt.outputFolder)
-  createFolder(opt.outputFolder..'images/')
+  if not opt.storeAsTensor then  createFolder(opt.outputFolder..'images/') end
   
   -- Note: If opt.samples is not divisble by opt.batchSize,
   -- more samples than opt.samples will be produced.
-  local nSamplesReal = math.floor(opt.samples/opt.batchSize)*opt.batchSize+opt.batchSize%opt.samples
-  
+  local nSamplesReal = math.floor(opt.samples/opt.batchSize)*opt.batchSize
+  if nSamplesReal ~= opt.samples then
+      nSamplesReal = nSamplesReal + opt.batchSize%opt.samples
+  end
+
   -- Initialize output file that will contain all the information
-  local outFile = {
-    relativePath = opt.outputFolder..'images/', -- write relative path once, not for every image
-    imNames = {},
-    imSize = nil, -- This value will be updated later
-    noises = torch.Tensor(nSamplesReal, opt.nz, opt.imsize, opt.imsize)
-  }
+  local outFile = initializeOutputFile(opt, nSamplesReal, net)
   
+  disp = require 'display'
   -- Create as many pairs of generated image and noise vector
   -- as specified by opt.samples.
   local imageSet
@@ -143,18 +189,17 @@ function main()
       if opt.noisetype == 'uniform' then
           noise:uniform(-1, 1)
       elseif opt.noisetype == 'normal' then
-          noise:normal(0, 1)
+          noise:normal(0, 10)
       end
       
       -- Generate images (number specified by opt.batchSize)
       imageSet = net:forward(noise)
-
+      
       -- Save images and update dataset file with image path and its vector noise
-      saveData(imageSet, noise, outFile, opt.outputFolder, i)
+      saveData(imageSet, noise, outFile, opt.outputFolder, opt.storeAsTensor, i)
       print(string.format("%d/%d",torch.ceil(i/opt.batchSize),torch.ceil(opt.samples/opt.batchSize)))
   end
-  
-  outFile.imSize = {imageSet:size(2), imageSet:size(3), imageSet:size(4)}
+
   
   -- Store Lua table with all the data
   local referenced = false

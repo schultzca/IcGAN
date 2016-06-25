@@ -37,20 +37,27 @@ end
 
 local function readDataset(path)
 -- There's expected to find in path a file named groundtruth.dmp
--- which contains the image paths and their vector noises.
+-- which contains the image paths / image tensors and their vector noises.
+    local images
     local data = torch.load(path..'groundtruth.dmp')
     local noises = data.noises
     
-    assert(noises:size(1)==#data.imNames, "groundtruth.dmp is corrupted, number of images and noises is not equal. Create the dataset again.")
-    
-    -- Load images
-    local tmp = image.load(data.relativePath..data.imNames[1])
-    local images = torch.Tensor(#data.imNames, data.imSize[1], data.imSize[2], data.imSize[3])
-    images[{{1},{},{},{}}] = tmp
-    for i=2,#data.imNames do
-        images[{{i},{},{},{}}] = image.load(data.relativePath..data.imNames[i])
+    if data.storeAsTensor then
+        images = data.images 
+        assert(noises:size(1)==images:size(1), "groundtruth.dmp is corrupted, number of images and noises is not equal. Create the dataset again.")
+    else
+        assert(noises:size(1)==#data.imNames, "groundtruth.dmp is corrupted, number of images and noises is not equal. Create the dataset again.")
+        
+        -- Load images
+        local tmp = image.load(data.relativePath..data.imNames[1])
+        images = torch.Tensor(#data.imNames, data.imSize[1], data.imSize[2], data.imSize[3])
+        images[{{1},{},{},{}}] = tmp
+        
+        for i=2,#data.imNames do
+            images[{{i},{},{},{}}] = image.load(data.relativePath..data.imNames[i])
+        end
     end
-    
+
     return images, noises
 end
 
@@ -116,7 +123,7 @@ local function getEncoderAAE(sample, hiddenLayerSize, outputSize)
     encoder:add(nn.Linear(inputSize, hiddenLayerSize))
     encoder:add(nn.ReLU(true))
     encoder:add(nn.Linear(hiddenLayerSize, outputSize))
-    encoder:add(nn.ReLU(true))
+    --encoder:add(nn.ReLU(true))
     
     local criterion = nn.MSECriterion() --nn.AbsCriterion()
     
@@ -181,14 +188,14 @@ local function assignBatches(batchX, batchY, x, y, tmpX, tmpY, batch, batchSize,
     return batchX, batchY
 end
 
-local function displayConfig(disp)
+local function displayConfig(disp, title)
     -- initialize error display configuration
     local errorData, errorDispConfig
     if disp then
         errorData = {}
         errorDispConfig =
           {
-            title = 'Encoder error',
+            title = 'Encoder error - ' .. title,
             win = 1,
             labels = {'Batch iterations', 'Train error', 'Test error'},
             ylabel = "Error",
@@ -221,7 +228,7 @@ function main()
   
   -- Set network architecture
   local encoder, criterion = getEncoderVAE_GAN(xTrain[1], opt.nf, yTrain:size(2), opt.nConvLayers)
-  encoder:apply(weights_init)
+  --encoder:apply(weights_init)
   local params, gradParams = encoder:getParameters()
     
   -- Initialize batches
@@ -265,7 +272,7 @@ function main()
   local tmpY = torch.Tensor(batchY:size())
   
   -- Initialize display configuration (if enabled)
-  local errorData, errorDispConfig = displayConfig(opt.display)
+  local errorData, errorDispConfig = displayConfig(opt.display, opt.name)
   
   -- Train network
   local batchIterations = 0 -- for display purposes only
@@ -281,17 +288,19 @@ function main()
           
           batchX, batchY = assignBatches(batchX, batchY, xTrain, yTrain, tmpX, tmpY, batch, opt.batchSize, shuffle)
           
-          if opt.display == 2 and batchIterations % 10 == 0 then
+          if opt.display == 2 and batchIterations % 20 == 0 then
               display.image(image.toDisplayTensor(batchX,0,torch.round(math.sqrt(opt.batchSize))), {win=2, title='Train mini-batch'})
           end
           
           -- Update network
           optim.adam(optimFunction, params, optimState)
           
-          -- Test error
-          batchX, batchY = assignBatches(batchX, batchY, xTest, yTest, tmpX, tmpY, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
-          local outputs = encoder:forward(batchX)
-          errorTest = criterion:forward(outputs, batchY)
+          -- Display train and test error
+          if opt.display and batchIterations % 20 == 0 then
+              -- Test error
+              batchX, batchY = assignBatches(batchX, batchY, xTest, yTest, tmpX, tmpY, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
+              local outputs = encoder:forward(batchX)
+              errorTest = criterion:forward(outputs, batchY)
           
           -- Display train and test error
           if opt.display and batchIterations % 10 == 0 then
@@ -326,7 +335,8 @@ function main()
             epoch, opt.nEpochs, epoch_tm:time().real))
   end
   -- Store network
-
+  paths.mkdir(opt.outputPath)
+  util.save(opt.outputPath .. opt.name .. '_' .. opt.nEpochs .. 'epochs.t7', encoder, opt.gpu)
 end
 
 main()
