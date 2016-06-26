@@ -189,7 +189,6 @@ function main()
   -- Initialize output file that will contain all the information
   local outFile = initializeOutputFile(opt, nSamplesReal, net)
   
-  disp = require 'display'
   -- Create as many pairs of generated image and noise vector
   -- as specified by opt.samples.
   local imageSet

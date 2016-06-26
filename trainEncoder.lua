@@ -11,22 +11,18 @@ local function getParameters()
   local opt = {
         name = 'encoder',
         batchSize = 128,
-        outputPath= nil,        -- path used to store the encoder network
+        outputPath= 'checkpoints/',        -- path used to store the encoder network
         datasetPath = 'mnist/generatedDataset/', -- folder where the dataset is stored (not the file itself)
         split = 0.66,           -- split between train and test (i.e 0.66 -> 66% train, 33% test)
         nConvLayers = 3,        -- # of convolutional layers on the net
         nf = 64,                -- #  of filters in hidden layer
-        nThreads = 6,           -- #  of data loading threads to use
         nEpochs = 25,           -- #  of epochs
         lr = 0.0002,            -- initial learning rate for adam
         beta1 = 0.5,            -- momentum term of adam
-        ntrain = math.huge,     -- #  of examples per epoch. math.huge for full dataset
         display = 1,         -- display train and test error wile training. 0 = false
         gpu = 1                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
         
   }
-  
-  opt.outputPath = 'checkpoints/'..opt.name..'.t7'
   
   for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
   
@@ -229,7 +225,6 @@ function main()
   -- Set network architecture
   local encoder, criterion = getEncoderVAE_GAN(xTrain[1], opt.nf, yTrain:size(2), opt.nConvLayers)
   --encoder:apply(weights_init)
-  local params, gradParams = encoder:getParameters()
     
   -- Initialize batches
   local batchX = torch.Tensor(opt.batchSize, xTrain:size(2), xTrain:size(3), xTrain:size(4))
@@ -301,9 +296,6 @@ function main()
               batchX, batchY = assignBatches(batchX, batchY, xTest, yTest, tmpX, tmpY, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
               local outputs = encoder:forward(batchX)
               errorTest = criterion:forward(outputs, batchY)
-          
-          -- Display train and test error
-          if opt.display and batchIterations % 10 == 0 then
               table.insert(errorData,
               {
                 batchIterations, -- x-axis
@@ -317,14 +309,11 @@ function main()
           end
           
           -- Verbose
-           -- logging
           if ((batch-1) / opt.batchSize) % 1 == 0 then
-             print(('Epoch: [%d][%8d / %8d]\t Time: %.3f  DataTime: %.3f  '
              print(('Epoch: [%d][%4d / %4d]  Error (train): %.4f  Error (test): %.4f  '
                        .. '  Time: %.3f s  Data time: %.3f s'):format(
                      epoch, ((batch-1) / opt.batchSize),
                      math.ceil(nTrainSamples / opt.batchSize),
-                     tm:time().real, data_tm:time().real,
                      errorTrain and errorTrain or -1,
                      errorTest and errorTest or -1,
                      tm:time().real, data_tm:time().real))
@@ -334,6 +323,7 @@ function main()
       print(('End of epoch %d / %d \t Time Taken: %.3f s'):format(
             epoch, opt.nEpochs, epoch_tm:time().real))
   end
+  
   -- Store network
   paths.mkdir(opt.outputPath)
   util.save(opt.outputPath .. opt.name .. '_' .. opt.nEpochs .. 'epochs.t7', encoder, opt.gpu)
