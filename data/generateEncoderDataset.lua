@@ -13,16 +13,17 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 local function getParameters()
   local opt = {
-    samples = 100000,          -- total number of samples to generate
+    samples = 10000,          -- total number of samples to generate
     batchSize = 256,         -- number of samples to produce at the same time
     noisetype = 'normal',  -- type of noise distribution (uniform / normal).
     net = 'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
     imsize = 1,            -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px,
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,              -- size of noise vector
-    outputFolder = 'mnist/generatedDataset2/', -- path where the dataset will be stored
+    outputFolder = 'mnist/generatedDataset/', -- path where the dataset will be stored
     outputFormat = 'binary', -- (binary | ascii) binary is faster, but platform-dependent.
-    storeAsTensor = true    -- true -> store images as tensor, false -> store images as images (lossy)
+    storeAsTensor = true,    -- true -> store images as tensor, false -> store images as images (lossy)
+    refreshBN = false,       -- refresh mean and std from BN layers. This needs to be done at least once after training. 
   }
   
   for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
@@ -59,6 +60,14 @@ local function initializeNet(net, opt)
   end
   
   util.optimizeInferenceMemory(net)
+  
+  if opt.refreshBN then
+      -- There's no need to do this more than once. Once the network with
+      -- the refreshed BN is saved, you can put opt.refreshBN to false again
+      -- as long as you use the same network.
+      util.stabilizeBN(net,noise,'normal')
+      util.save(opt.net, net, opt.gpu)
+  end
     
   -- Put network to evaluate mode so batch normalization layers 
   -- do not change its parameters on test time.
