@@ -111,7 +111,7 @@ function util.stabilizeBN(net, noises, noiseType)
       if noiseType == 'uniform' then
           noises:uniform(-1, 1)
       elseif noiseType == 'normal' then
-          noises:normal(0, 10)
+          noises:normal(0, 1)
       end
       
       -- Generate images

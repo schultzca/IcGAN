@@ -10,17 +10,17 @@ torch.setdefaulttensortype('torch.FloatTensor')
 local function getParameters()
   local opt = {
         name = 'encoder',
-        batchSize = 128,
+        batchSize = 64,
         outputPath= 'checkpoints/',        -- path used to store the encoder network
         datasetPath = 'mnist/generatedDataset/', -- folder where the dataset is stored (not the file itself)
         split = 0.66,           -- split between train and test (i.e 0.66 -> 66% train, 33% test)
         nConvLayers = 3,        -- # of convolutional layers on the net
-        nf = 64,                -- #  of filters in hidden layer
-        nEpochs = 25,           -- #  of epochs
-        lr = 0.0002,            -- initial learning rate for adam
-        beta1 = 0.5,            -- momentum term of adam
-        display = 1,         -- display train and test error wile training. 0 = false
-        gpu = 1                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
+        nf = 128, --512 for AAE -- #  of filters in hidden layer
+        nEpochs = 6,            -- #  of epochs
+        lr = 0.0001,            -- initial learning rate for adam
+        beta1 = 0.1,            -- momentum term of adam
+        display = 1,            -- display 1= train and test error, 2 = error + batches images, 0 = false
+        gpu = 1                 -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
         
   }
   
@@ -158,6 +158,9 @@ local function getEncoderVAE_GAN(sample, nFiltersBase, outputSize, nConvLayers)
     -- Assuming squared images and conv layers configuration (kernel, stride and padding) is not changed:
     --nFilterFC = (imageSize/2^nConvLayers)²*nFiltersLastConvNet
     local inputFilterFC = (sample:size(2)/2^nConvLayers)^2*nFilters
+    encoder:add(nn.Linear(inputFilterFC, inputFilterFC)) 
+    encoder:add(nn.BatchNormalization(inputFilterFC))
+    encoder:add(nn.ReLU(true))
     encoder:add(nn.Linear(inputFilterFC, outputSize)) 
     --encoder:add(nn.BatchNormalization(outputSize))
     --encoder:add(nn.ReLU(true))
