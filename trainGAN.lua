@@ -1,17 +1,16 @@
 require 'torch'
 require 'nn'
 require 'optim'
-util = paths.dofile('util.lua')
 
 opt = {
-   dataset = 'lsun',       -- imagenet / lsun / folder
+   dataset = 'folder',       -- imagenet / lsun / folder
    batchSize = 64,
-   loadSize = 33, -- 96,
-   fineSize = 32, -- 64,
+   loadSize = 96,--33, -- 96,
+   fineSize = 64,--32, -- 64,
    nz = 100,               -- #  of dim for Z
    ngf = 64,               -- #  of gen filters in first conv layer
    ndf = 64,               -- #  of discrim filters in first conv layer
-   nThreads = 6,           -- #  of data loading threads to use
+   nThreads = 4,           -- #  of data loading threads to use
    niter = 25,             -- #  of iter at starting learning rate
    lr = 0.0002,            -- initial learning rate for adam
    beta1 = 0.5,            -- momentum term of adam
@@ -19,7 +18,7 @@ opt = {
    display = 1,            -- display samples while training. 0 = false
    display_id = 10,        -- display window id.
    gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
-   name = 'experiment1',
+   name = 'celebA_aligned',
    noise = 'normal',       -- uniform / normal
 }
 
@@ -43,7 +42,7 @@ local function weights_init(m)
    local name = torch.type(m)
    if name:find('Convolution') then
       m.weight:normal(0.0, 0.02)
-      m.bias:fill(0)
+      m:noBias()
    elseif name:find('BatchNormalization') then
       if m.weight then m.weight:normal(1.0, 0.02) end
       if m.bias then m.bias:fill(0) end
@@ -65,7 +64,7 @@ local SpatialConvolution = nn.SpatialConvolution
 local SpatialFullConvolution = nn.SpatialFullConvolution
 
 local netG = nn.Sequential()
---[[-- input is Z, going into a convolution
+-- input is Z, going into a convolution
 netG:add(SpatialFullConvolution(nz, ngf * 8, 4, 4))
 netG:add(SpatialBatchNormalization(ngf * 8)):add(nn.ReLU(true))
 -- state size: (ngf*8) x 4 x 4
@@ -83,10 +82,10 @@ netG:add(SpatialBatchNormalization(ngf)):add(nn.ReLU(true))
 -- state size: (ngf) x 32 x 32
 netG:add(SpatialFullConvolution(ngf, nc, 4, 4, 2, 2, 1, 1))
 netG:add(nn.Tanh())
--- state size: (nc) x 64 x 64 -- ]]--
+-- state size: (nc) x 64 x 64 
 
 -- input is Z, going into a convolution
-netG:add(SpatialFullConvolution(nz, ngf * 4, 4, 4))
+--[[netG:add(SpatialFullConvolution(nz, ngf * 4, 4, 4))
 netG:add(SpatialBatchNormalization(ngf * 4)):add(nn.ReLU(true))
 -- state size: (ngf*8) x 4 x 4
 -- Alternatively, you could perform a 5x5 convolution with 2 padding 
@@ -99,7 +98,7 @@ netG:add(SpatialBatchNormalization(ngf)):add(nn.ReLU(true))
 -- state size: (ngf*2) x 16 x 16
 netG:add(SpatialFullConvolution(ngf, nc, 4, 4, 2, 2, 1, 1))
 netG:add(nn.Tanh())
--- state size: (nc) x 32 x 32
+-- state size: (nc) x 32 x 32--]]
 
 netG:apply(weights_init)
 
@@ -115,11 +114,11 @@ netD:add(SpatialBatchNormalization(ndf * 2)):add(nn.LeakyReLU(0.2, true))
 netD:add(SpatialConvolution(ndf * 2, ndf * 4, 4, 4, 2, 2, 1, 1))
 netD:add(SpatialBatchNormalization(ndf * 4)):add(nn.LeakyReLU(0.2, true))
 -- state size: (ndf*4) x 8 x 8
---netD:add(SpatialConvolution(ndf * 4, ndf * 8, 4, 4, 2, 2, 1, 1))
---netD:add(SpatialBatchNormalization(ndf * 8)):add(nn.LeakyReLU(0.2, true))
+netD:add(SpatialConvolution(ndf * 4, ndf * 8, 4, 4, 2, 2, 1, 1)) -- Comentar per MNIST
+netD:add(SpatialBatchNormalization(ndf * 8)):add(nn.LeakyReLU(0.2, true)) -- Comentar per MNIST
 -- state size: (ndf*8) x 4 x 4
---netD:add(SpatialConvolution(ndf * 8, 1, 4, 4))
-netD:add(SpatialConvolution(ndf * 4, 1, 4, 4))
+netD:add(SpatialConvolution(ndf * 8, 1, 4, 4)) -- Comentar per MNIST
+--netD:add(SpatialConvolution(ndf * 4, 1, 4, 4)) -- Descomentar per MNIST
 netD:add(nn.Sigmoid())
 -- state size: 1 x 1 x 1
 netD:add(nn.View(1):setNumInputDims(nc))
@@ -150,7 +149,13 @@ if opt.gpu > 0 then
    require 'cunn'
    cutorch.setDevice(opt.gpu)
    input = input:cuda();  noise = noise:cuda();  label = label:cuda()
-   netG = util.cudnn(netG);     netD = util.cudnn(netD)
+
+   if pcall(require, 'cudnn') then
+      require 'cudnn'
+      cudnn.benchmark = true
+      cudnn.convert(netG, cudnn)
+      cudnn.convert(netD, cudnn)
+   end
    netD:cuda();           netG:cuda();           criterion:cuda()
 end
 
@@ -168,9 +173,6 @@ end
 
 -- create closure to evaluate f(X) and df/dX of discriminator
 local fDx = function(x)
-   netD:apply(function(m) if torch.type(m):find('Convolution') then m.bias:zero() end end)
-   netG:apply(function(m) if torch.type(m):find('Convolution') then m.bias:zero() end end)
-
    gradParametersD:zero()
 
    -- train with real
@@ -207,9 +209,6 @@ end
 
 -- create closure to evaluate f(X) and df/dX of generator
 local fGx = function(x)
-   netD:apply(function(m) if torch.type(m):find('Convolution') then m.bias:zero() end end)
-   netG:apply(function(m) if torch.type(m):find('Convolution') then m.bias:zero() end end)
-
    gradParametersG:zero()
 
    --[[ the three lines below were already executed in fDx, so save computation
@@ -222,7 +221,9 @@ local fGx = function(x)
    errG = criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
    local df_dg = netD:updateGradInput(input, df_do)
-
+   -- Què és df_dg? Perquè no fa netG:backward(noise,df_do)?
+   -- Potser així forces que estàs maximitzant l'error de netD? Però jo pensava
+   -- que això ja ho deies amb df_do
    netG:backward(noise, df_dg)
    return errG, gradParametersG
 end
@@ -287,8 +288,8 @@ for epoch = 1, opt.niter do
    paths.mkdir('checkpoints')
    parametersD, gradParametersD = nil, nil -- nil them to avoid spiking memory
    parametersG, gradParametersG = nil, nil
-   util.save('checkpoints/' .. opt.name .. '_' .. epoch .. '_net_G.t7', netG, opt.gpu)
-   util.save('checkpoints/' .. opt.name .. '_' .. epoch .. '_net_D.t7', netD, opt.gpu)
+   torch.save('checkpoints/' .. opt.name .. '_' .. epoch .. '_net_G.t7', netG:clearState())
+   torch.save('checkpoints/' .. opt.name .. '_' .. epoch .. '_net_D.t7', netD:clearState())
    parametersD, gradParametersD = netD:getParameters() -- reflatten the params and get them
    parametersG, gradParametersG = netG:getParameters()
    print(('End of epoch %d / %d \t Time Taken: %.3f'):format(
