@@ -197,7 +197,7 @@ function main()
       if opt.noisetype == 'uniform' then
           noise:uniform(-1, 1)
       elseif opt.noisetype == 'normal' then
-          noise:normal(0, 10)
+          noise:normal(0, 1)
       end
       
       -- Generate images (number specified by opt.batchSize)

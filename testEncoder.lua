@@ -49,7 +49,7 @@ util.optimizeInferenceMemory(decG)
 
 -- Clone is needed, otherwise next forward call will overwrite inImage
 local inImage = decG:forward(inNoise):clone()
-
+print('Images size: ', inImage:size(1)..' x '..inImage:size(2) ..' x '..inImage:size(3)..' x '..inImage:size(4))
 --[[ Image to noise (encoder GAN) ]]--
 -- Output noise should be equal to input noise
 
@@ -65,7 +65,7 @@ local outNoise = encG:forward(inImage)
 print("Are input and output noise equal? ", torch.all(inNoise:eq(outNoise)))
 print('\tinNoise: Mean, Stdv, Min, Max', inNoise:mean(), inNoise:std(), inNoise:min(), inNoise:max())
 print('\toutNoise: Mean, Stdv, Min, Max', outNoise:mean(), outNoise:std(), outNoise:min(), outNoise:max())
-local error = torch.sum(torch.abs(inNoise-outNoise))/opt.nz
+local error = torch.sum(torch.abs(inNoise-outNoise))/(inNoise:size(1)*inNoise:size(2)*inNoise:size(3)*inNoise:size(4))
 print('\tAbsolute error per position: ', error)
 
 -- Now test if an encoded and then decoded image looks similar to the input image

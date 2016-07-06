@@ -272,6 +272,8 @@ function main()
   -- Initialize display configuration (if enabled)
   local errorData, errorDispConfig = displayConfig(opt.display, opt.name)
   
+  paths.mkdir(opt.outputPath)
+  
   -- Train network
   local batchIterations = 0 -- for display purposes only
   for epoch = 1, opt.nEpochs do
@@ -325,11 +327,11 @@ function main()
       end
       print(('End of epoch %d / %d \t Time Taken: %.3f s'):format(
             epoch, opt.nEpochs, epoch_tm:time().real))
+            
+      -- Store network
+      util.save(opt.outputPath .. opt.name .. '_' .. epoch .. 'epochs.t7', encoder, opt.gpu)
   end
   
-  -- Store network
-  paths.mkdir(opt.outputPath)
-  util.save(opt.outputPath .. opt.name .. '_' .. opt.nEpochs .. 'epochs.t7', encoder, opt.gpu)
 end
 
 main()
