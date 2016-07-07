@@ -58,9 +58,18 @@ local trainHook = function(self, path)
    -- do random crop
    local oW = sampleSize[2];
    local oH = sampleSize[2]
-   local h1 = math.ceil(torch.uniform(1e-2, iH-oH))
-   local w1 = math.ceil(torch.uniform(1e-2, iW-oW))
-   local out = image.crop(input, w1, h1, w1 + oW, h1 + oH)
+   
+   -- Flip is not performed in MNIST dataset. Random crop is optional.
+   randomCrop = false
+   if randomCrop then
+     -- do random crop
+     local h1 = math.ceil(torch.uniform(1e-2, iH-oH))
+     local w1 = math.ceil(torch.uniform(1e-2, iW-oW))
+     out = image.crop(input, w1, h1, w1 + oW, h1 + oH)
+   else
+     out = image.scale(input, oW, oH)
+   end
+   
    assert(out:size(2) == oW)
    assert(out:size(3) == oH)
    -- do hflip with probability 0.5
