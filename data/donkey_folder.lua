@@ -14,15 +14,15 @@ paths.dofile('dataset.lua')
 -- It is run by each data-loader thread.
 ------------------------------------------
 -------- COMMON CACHES and PATHS
--- Check for existence of opt.data
-opt.data = os.getenv('DATA_ROOT') or '/data/local/imagenet-fetch/256'
-if not paths.dirp(opt.data) then
-    error('Did not find directory: ', opt.data)
+-- Check for existence of opt.dataRoot
+--opt.dataRoot = os.getenv('DATA_ROOT') or '/data/local/imagenet-fetch/256'
+if not paths.dirp(opt.dataRoot) then
+    error('Did not find directory: ', opt.dataRoot)
 end
 
 -- a cache file of the training metadata (if doesnt exist, will be created)
 local cache = "cache"
-local cache_prefix = opt.data:gsub('/', '_')
+local cache_prefix = opt.dataRoot:gsub('/', '_')
 os.execute('mkdir -p cache')
 local trainCache = paths.concat(cache, cache_prefix .. '_trainCache.t7')
 
@@ -89,7 +89,7 @@ if paths.filep(trainCache) then
 else
    print('Creating train metadata')
    trainLoader = dataLoader{
-      paths = {opt.data},
+      paths = {opt.dataRoot},
       loadSize = {3, loadSize[2], loadSize[2]},
       sampleSize = {3, sampleSize[2], sampleSize[2]},
       split = 100,
