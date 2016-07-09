@@ -184,7 +184,8 @@ local fDx = function(x)
    label:fill(real_label)
 
    local output = netD:forward(input)
-   local errD_real = criterion:forward(output, label)
+   local errD_real = torch.sum(output:lt(0.5))/output:size(1)
+   criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
    netD:backward(input, df_do)
 
@@ -199,11 +200,13 @@ local fDx = function(x)
    label:fill(fake_label)
 
    local output = netD:forward(input)
-   local errD_fake = criterion:forward(output, label)
+   local errD_fake = torch.sum(output:ge(0.5))/output:size(1)
+   criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
    netD:backward(input, df_do)
 
-   errD = errD_real + errD_fake
+   -- Error indicates % of how many samples have been incorrectly guessed by the discriminator
+   errD = (errD_real + errD_fake) / 2
 
    return errD, gradParametersD
 end
@@ -239,8 +242,13 @@ if opt.display then
     title = 'Generator and discriminator error',
     win = opt.display_id * 4,
     labels = {'Batch iterations', 'G error', 'D error'},
-    ylabel = "Error",
-    legend='always'
+    ylabel = "G error",
+    y2label = "D error",
+    legend = 'always',
+    axes = { y2 = {valueRange = {0,1}}},
+    series = {
+      ['D error'] = { axis = 'y2' }
+    }
   }
 end
 
