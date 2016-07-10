@@ -62,8 +62,8 @@ function trainLoader:sample(quantity)
     assert(quantity)
     local labelSize = 10 -- MNIST has a one-hot vector code of size 10, one for each digit
     local samples = torch.Tensor(quantity, sampleSize[1], sampleSize[2], sampleSize[2]) -- real images
-    local labelsReal = torch.zeros(quantity, labelSize) -- real label
-    local labelsFake = torch.zeros(quantity, labelSize) -- mismatch label (taken pseudo-randomly)
+    local labelsReal = torch.zeros(quantity, ySize) -- real label
+    local labelsFake = torch.zeros(quantity, ySize) -- mismatch label (taken pseudo-randomly)
     
     -- Sampling with replacement (between batches we don't control which samples have been sampled)
     local randIdx = torch.randperm(trainSet.size):narrow(1,1,quantity)
@@ -76,7 +76,7 @@ function trainLoader:sample(quantity)
         labelsReal[{{i},{class+1}}] = 1 -- one-hot vector
         
         -- Compute randomly fake class. It can be any classe except the real one.
-        local fakeClass = torch.randperm(labelSize)
+        local fakeClass = torch.randperm(ySize)
         if fakeClass[1] == class+1 then 
             fakeClass = fakeClass[2]
         else
@@ -89,7 +89,18 @@ function trainLoader:sample(quantity)
     return samples, labelsReal, labelsFake
 end
 
+function trainLoader:sampleY(quantity)
+    -- TO-DO
+    -- Potser aquí hauria d'anar la interpolació també
+    collectgarbage()
+    return torch.zeros(quantity, ySize)
+end
+
 function trainLoader:size()
-  return trainSet.size
+    return trainSet.size
+end
+
+function trainLoader:ySize()
+    return ySize
 end
 
