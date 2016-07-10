@@ -92,8 +92,14 @@ end
 function trainLoader:sampleY(quantity)
     -- TO-DO
     -- Potser aquí hauria d'anar la interpolació també
+    local y = torch.zeros(quantity, ySize)
+    local randIdx = torch.randperm(trainSet.size):narrow(1,1,quantity)
+    for i=1,quantity do
+        local class = trainSet.label[randIdx[i]]
+        y[{{i},{class+1}}] = 1 -- PROVISIONAL WORKAROUND
+    end
     collectgarbage()
-    return torch.zeros(quantity, ySize)
+    return y
 end
 
 function trainLoader:size()

@@ -63,10 +63,10 @@ function data.new(n, dataset_name, opt_)
    self.threads:synchronize()
    self._ySize = ySize
   
-   for i = 1, n do
+   --[[or i = 1, n do
       self.threads:addjob(self._getBatchFromThreads,
                           self._pushResult)
-   end
+   end--]]
 
    return self
 end
