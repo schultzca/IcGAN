@@ -15,6 +15,7 @@ paths.dofile('dataset.lua')
 ------------------------------------------
 
 trainLoader = {}
+local ySize = 10
 
 -------- COMMON
 local mnist = require 'mnist'
@@ -60,7 +61,6 @@ end
 -- trainLoader
 function trainLoader:sample(quantity)
     assert(quantity)
-    local labelSize = 10 -- MNIST has a one-hot vector code of size 10, one for each digit
     local samples = torch.Tensor(quantity, sampleSize[1], sampleSize[2], sampleSize[2]) -- real images
     local labelsReal = torch.zeros(quantity, ySize) -- real label
     local labelsFake = torch.zeros(quantity, ySize) -- mismatch label (taken pseudo-randomly)

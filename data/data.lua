@@ -84,8 +84,6 @@ function data._pushResult(...)
    result[1] = res
 end
 
-
-
 function data:getBatch()
    -- queue another job
    self.threads:addjob(self._getBatchFromThreads, self._pushResult)
