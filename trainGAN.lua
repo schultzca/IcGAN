@@ -220,13 +220,15 @@ local fGx = function(x)
    input:copy(fake) ]]--
    label:fill(real_label) -- fake labels are real for generator cost
 
-   local output = netD.output -- netD:forward(input) was already executed in fDx, so save computation
+   local output = netD:forward(input) -- Need to compute output again, as D has been updated in fDx
    errG = criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
    local df_dg = netD:updateGradInput(input, df_do)
-   -- Què és df_dg? Perquè no fa netG:backward(noise,df_do)?
-   -- Potser així forces que estàs maximitzant l'error de netD? Però jo pensava
-   -- que això ja ho deies amb df_do
+   -- df_dg contains the gradients w.r.t. generated images by G,
+   -- which is precisely what you want to apply at G's backward step.
+   -- df_do is not used on G's bkwrd step because they are the gradients
+   -- w.r.t. D output, which is only a one-dimensional vector with
+   -- the score between 0 and 1 of real/fake of a set of generated images.
    netG:backward(noise, df_dg)
    return errG, gradParametersG
 end
