@@ -104,7 +104,8 @@ if opt.gpu > 0 then
     sample_input[1] = sample_input[1]:cuda()
     sample_input[2] = sample_input[2]:cuda()
 else
-   sample_input = sample_input:float()
+   sample_input[1] = sample_input[1]:float()
+   sample_input[2] = sample_input[2]:float()
    net:float()
 end
 
