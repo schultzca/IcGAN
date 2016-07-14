@@ -108,10 +108,10 @@ else
    sample_input[2] = sample_input[2]:float()
    net:float()
 end
-
+local sampleInput = {Z:narrow(1,1,2), Y:narrow(1,1,2)}
 -- a function to setup double-buffering across the network.
 -- this drastically reduces the memory needed to generate samples
-optnet.optimizeMemory(net, sample_input)
+optnet.optimizeMemory(net, sampleInput)
 
 local images = net:forward{Z, Y}
 print('Images size: ', images:size(1)..' x '..images:size(2) ..' x '..images:size(3)..' x '..images:size(4))
