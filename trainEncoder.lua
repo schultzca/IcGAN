@@ -4,7 +4,6 @@
 require 'image'
 require 'nn'
 require 'optim'
-util = paths.dofile('util.lua')
 torch.setdefaulttensortype('torch.FloatTensor')
 
 local function getParameters()
@@ -33,43 +32,47 @@ end
 
 local function readDataset(path)
 -- There's expected to find in path a file named groundtruth.dmp
--- which contains the image paths / image tensors and their vector noises.
-    local images
+-- which contains the image paths / image tensors and Z and Y input vectors.
+    local X
     local data = torch.load(path..'groundtruth.dmp')
-    local noises = data.noises
+    
+    local Z = data.Z
+    local Y = data.Y
     
     if data.storeAsTensor then
-        images = data.images 
-        assert(noises:size(1)==images:size(1), "groundtruth.dmp is corrupted, number of images and noises is not equal. Create the dataset again.")
+        X = data.X 
+        assert(Z:size(1)==X:size(1) and Y:size(1)==X:size(1), "groundtruth.dmp is corrupted, number of images and Z and Y vectors is not equal. Create the dataset again.")
     else
-        assert(noises:size(1)==#data.imNames, "groundtruth.dmp is corrupted, number of images and noises is not equal. Create the dataset again.")
+        assert(Z:size(1)==#data.imNames and Y:size(1)==#data.imNames, "groundtruth.dmp is corrupted, number of images and Z and Y vectors is not equal. Create the dataset again.")
         
         -- Load images
         local tmp = image.load(data.relativePath..data.imNames[1])
-        images = torch.Tensor(#data.imNames, data.imSize[1], data.imSize[2], data.imSize[3])
-        images[{{1},{},{},{}}] = tmp
+        X = torch.Tensor(#data.imNames, data.imSize[1], data.imSize[2], data.imSize[3])
+        X[{{1},{},{},{}}] = tmp
         
         for i=2,#data.imNames do
-            images[{{i},{},{},{}}] = image.load(data.relativePath..data.imNames[i])
+            X[{{i},{},{},{}}] = image.load(data.relativePath..data.imNames[i])
         end
     end
 
-    return images, noises
+    return X, Z, Y
 end
 
-local function splitTrainTest(x, y, split)
-    local xTrain, yTrain, xTest, yTest
+local function splitTrainTest(x, z, y, split)
+    local xTrain, zTrain, yTrain, xTest, zTest, yTest
     
     local nSamples = x:size(1)
     local splitInd = torch.floor(split*nSamples)
     
     xTrain = x[{{1,splitInd},{},{},{}}]
-    yTrain = y[{{1,splitInd},{},{},{}}]
+    zTrain = z[{{1,splitInd},{},{},{}}]
+    yTrain = y[{{1,splitInd},{}}]
     
     xTest = x[{{splitInd+1,nSamples},{},{},{}}]
-    yTest = y[{{splitInd+1,nSamples},{},{},{}}]
+    zTest = z[{{splitInd+1,nSamples},{},{},{}}]
+    yTest = y[{{splitInd+1,nSamples},{}}]
     
-    return xTrain, yTrain, xTest, yTest
+    return xTrain, zTrain, yTrain, xTest, zTest, yTest
 end
 
 local function weights_init(m)
@@ -86,6 +89,7 @@ end
 local function getEncoderAEV(sample, hiddenLayerSize, outputSize)
     -- Encoder architecture taken from https://github.com/y0ast/VAE-Torch, which is
     -- based on Auto-Encoding Variational Bayes paper from D. Kingma and M. Welling
+    error('Architecture not adapted for cGANs.')
     local inputSize = nn.View(-1):forward(sample):size()[1] --xTrain[1]:size(1)*xTrain[1]:size(2)*xTrain[1]:size(3)*xTrain[1]:size(4)
     local encoder = nn.Sequential()
     encoder:add(nn.View(-1):setNumInputDims(3)) -- Explanation of this reshape on getEnocderAAE function
@@ -107,6 +111,7 @@ local function getEncoderAAE(sample, hiddenLayerSize, outputSize)
   -- Encoder architecture taken from Adversarial Autoencoders from A. Makhzan et al.
   -- "The encoder, decoder and discriminator each have two layers of 1000 hidden units with
   -- ReLU activation function. The autoencoder is trained with a Euclidean cost function for reconstruction. 
+    error('Architecture not adapted for cGANs.')
     local inputSize = nn.View(-1):forward(sample):size()[1] --xTrain[1]:size(1)*xTrain[1]:size(2)*xTrain[1]:size(3)*xTrain[1]:size(4)
     local encoder = nn.Sequential()
     -- This layer reshapes a tensor of #samples x im3 x im2 x im1 to
@@ -126,8 +131,10 @@ local function getEncoderAAE(sample, hiddenLayerSize, outputSize)
     return encoder, criterion
 end
 
-local function getEncoderVAE_GAN(sample, nFiltersBase, outputSize, nConvLayers)
+local function getEncoderVAE_GAN(sample, nFiltersBase, Zsz, Ysz, nConvLayers)
   -- Encoder architecture taken from Autoencoding beyond pixels using a learned similarity metric (VAE/GAN hybrid)
+  -- Zsz: size of the output vector Z
+  -- Ysz: size of the output vector Y
   
   -- Sample is used to know the dimensionality of the data. 
   -- For convolutional layers we are only interested in the third dimension (RGB or grayscale)
@@ -140,51 +147,68 @@ local function getEncoderVAE_GAN(sample, nFiltersBase, outputSize, nConvLayers)
     encoder:add(nn.SpatialBatchNormalization(nFiltersBase))
     encoder:add(nn.ReLU(true))
     
-    -- 2nd Conv layer: 5×5 128 conv. ↓, BNorm, ReLU
-    --           Data: 16x16 -> 8x8
-    -- 3rd Conv layer: 5×5 256 conv. ↓, BNorm, ReLU
-    --           Data: 8x8 -> 4x4
-    local nFilters = nFiltersBase
-    for i=2,nConvLayers do
-        encoder:add(nn.SpatialConvolution(nFilters, nFilters*2, 5, 5, 2, 2, 2, 2))
-        encoder:add(nn.SpatialBatchNormalization(nFilters*2))
-        encoder:add(nn.ReLU(true))
-        nFilters = nFilters * 2
+    -- After 1st conv layer, split network in two: one module outputs Z, the other Y.
+    -- Both share the same architecture, but do not share parameters.
+    local ct = nn.ConcatTable()
+    
+    for i=1,2 do -- repeat 2 times, one for each module (Z and Y)
+        local ctModule = nn.Sequential()
+        -- 2nd Conv layer: 5×5 128 conv. ↓, BNorm, ReLU
+        --           Data: 16x16 -> 8x8
+        -- 3rd Conv layer: 5×5 256 conv. ↓, BNorm, ReLU
+        --           Data: 8x8 -> 4x4
+        local nFilters = nFiltersBase
+        for j=2,nConvLayers do
+            ctModule:add(nn.SpatialConvolution(nFilters, nFilters*2, 5, 5, 2, 2, 2, 2))
+            ctModule:add(nn.SpatialBatchNormalization(nFilters*2))
+            ctModule:add(nn.ReLU(true))
+            nFilters = nFilters * 2
+        end
+        
+        
+         -- 4th FC layer: 2048 fully-connected
+        --         Data: 4x4 -> 16
+        ctModule:add(nn.View(-1):setNumInputDims(3)) -- reshape data to 2d tensor (samples x the rest)
+        -- Assuming squared images and conv layers configuration (kernel, stride and padding) is not changed:
+        --nFilterFC = (imageSize/2^nConvLayers)²*nFiltersLastConvNet
+        local inputFilterFC = (sample:size(2)/2^nConvLayers)^2*nFilters
+        ctModule:add(nn.Linear(inputFilterFC, inputFilterFC)) 
+        ctModule:add(nn.BatchNormalization(inputFilterFC))
+        ctModule:add(nn.ReLU(true))
+        local outputSize
+        if i==1 then outputSize = Zsz else outputSize = Ysz end
+        ctModule:add(nn.Linear(inputFilterFC, outputSize)) 
+        --ct:add(nn.BatchNormalization(outputSize))
+        --ct:add(nn.ReLU(true))
+        
+        ct:add(ctModule)
     end
     
-    -- 4th FC layer: 2048 fully-connected
-    --         Data: 4x4 -> 16
-    encoder:add(nn.View(-1):setNumInputDims(3)) -- reshape data to 2d tensor (samples x the rest)
-    -- Assuming squared images and conv layers configuration (kernel, stride and padding) is not changed:
-    --nFilterFC = (imageSize/2^nConvLayers)²*nFiltersLastConvNet
-    local inputFilterFC = (sample:size(2)/2^nConvLayers)^2*nFilters
-    encoder:add(nn.Linear(inputFilterFC, inputFilterFC)) 
-    encoder:add(nn.BatchNormalization(inputFilterFC))
-    encoder:add(nn.ReLU(true))
-    encoder:add(nn.Linear(inputFilterFC, outputSize)) 
-    --encoder:add(nn.BatchNormalization(outputSize))
-    --encoder:add(nn.ReLU(true))
+    encoder:add(ct)
     
-    local criterion = nn.MSECriterion()
+    local mse = nn.MSECriterion()
+    local criterion = nn.ParallelCriterion():add(mse):add(mse)
     
     return encoder, criterion
 end
 
-local function assignBatches(batchX, batchY, x, y, tmpX, tmpY, batch, batchSize, shuffle)
+local function assignBatches(batchX, batchZ, batchY, x, z, y, tmpX, tmpZ, tmpY, batch, batchSize, shuffle)
     
     data_tm:reset(); data_tm:resume()
     
     local idx = 1
-    for i = batch, batch+batchSize-1 do -- Haven't found a way to do this without a for loop
+    for i = batch, batch+batchSize-1 do -- Haven't found a way to do this without a for loop and tmp variables
          tmpX[idx] = x[{{shuffle[i]},{},{},{}}]
-         tmpY[idx] = y[{{shuffle[i]},{},{},{}}]
+         tmpZ[idx] = z[{{shuffle[i]},{},{},{}}]
+         tmpY[idx] = y[{{shuffle[i]},{}}]
          idx = idx + 1
     end
     data_tm:stop()
     batchX:copy(tmpX)
+    batchZ:copy(tmpZ)
     batchY:copy(tmpY)
     
-    return batchX, batchY
+    return batchX, batchZ, batchY
 end
 
 local function displayConfig(disp, title)
@@ -215,29 +239,39 @@ function main()
   data_tm = torch.Timer()
 
   -- Read dataset
-  local samples, noises
-  samples, noises = readDataset(opt.datasetPath)
+  local X, Z, Y
+  X, Z, Y = readDataset(opt.datasetPath)
   
   -- Split train and test
-  local xTrain, yTrain, xTest, yTest
-  xTrain, yTrain, xTest, yTest = splitTrainTest(samples, noises, opt.split)
+  local xTrain, zTrain, yTrain, xTest, zTest, yTest
+  -- z --> contain Z vectors    y --> contain Y vectors
+  xTrain, zTrain, yTrain, xTest, zTest, yTest = splitTrainTest(X, Z, Y, opt.split)
 
-  -- samples: #samples x im3 x im2 x im1
-  -- noise: #samples x 100 x 1 x 1 
+  -- X: #samples x im3 x im2 x im1
+  -- Z: #samples x 100 x 1 x 1 
+  -- Y: #samples x ny
   
   -- Set network architecture
-  local encoder, criterion = getEncoderVAE_GAN(xTrain[1], opt.nf, yTrain:size(2), opt.nConvLayers)
+  local encoder, criterion = getEncoderVAE_GAN(xTrain[1], opt.nf, zTrain:size(2), yTrain:size(2), opt.nConvLayers)
   --encoder:apply(weights_init)
-    
+ 
   -- Initialize batches
   local batchX = torch.Tensor(opt.batchSize, xTrain:size(2), xTrain:size(3), xTrain:size(4))
+  local batchZ = torch.Tensor(opt.batchSize, zTrain:size(2))
   local batchY = torch.Tensor(opt.batchSize, yTrain:size(2))
   
   -- Copy variables to GPU
   if opt.gpu > 0 then
      require 'cunn'
      cutorch.setDevice(opt.gpu)
-     batchX = batchX:cuda();  batchY = batchY:cuda();
+     batchX = batchX:cuda();  batchZ = batchZ:cuda(); batchY = batchY:cuda();
+     
+     if pcall(require, 'cudnn') then
+        require 'cudnn'
+        cudnn.benchmark = true
+        cudnn.convert(encoder, cudnn)
+     end
+     
      encoder:cuda()
      criterion:cuda()
   end
@@ -252,8 +286,8 @@ function main()
       gradParams:zero()
       
       local outputs = encoder:forward(batchX)
-      errorTrain = criterion:forward(outputs, batchY)
-      local dloss_doutput = criterion:backward(outputs, batchY)
+      errorTrain = criterion:forward(outputs, {batchZ, batchY})
+      local dloss_doutput = criterion:backward(outputs, {batchZ, batchY})
       encoder:backward(batchX, dloss_doutput)
       
       return errorTrain, gradParams
@@ -267,6 +301,7 @@ function main()
   local nTrainSamples = xTrain:size(1)
   local nTestSamples = xTest:size(1)
   local tmpX = torch.Tensor(batchX:size())
+  local tmpZ = torch.Tensor(batchZ:size())
   local tmpY = torch.Tensor(batchY:size())
   
   -- Initialize display configuration (if enabled)
@@ -286,7 +321,7 @@ function main()
           batchX:copy(xTrain[{{batch,splitInd}}])
           batchY:copy(yTrain[{{batch,splitInd}}])--]]
           
-          batchX, batchY = assignBatches(batchX, batchY, xTrain, yTrain, tmpX, tmpY, batch, opt.batchSize, shuffle)
+          batchX, batchZ, batchY = assignBatches(batchX, batchZ, batchY, xTrain, zTrain, yTrain, tmpX, tmpZ, tmpY, batch, opt.batchSize, shuffle)
           
           if opt.display == 2 and batchIterations % 20 == 0 then
               display.image(image.toDisplayTensor(batchX,0,torch.round(math.sqrt(opt.batchSize))), {win=2, title='Train mini-batch'})
@@ -298,9 +333,9 @@ function main()
           -- Display train and test error
           if opt.display and batchIterations % 20 == 0 then
               -- Test error
-              batchX, batchY = assignBatches(batchX, batchY, xTest, yTest, tmpX, tmpY, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
+              batchX, batchZ, batchY = assignBatches(batchX, batchZ, batchY, xTest, zTest, yTest, tmpX, tmpZ, tmpY, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
               local outputs = encoder:forward(batchX)
-              errorTest = criterion:forward(outputs, batchY)
+              errorTest = criterion:forward(outputs, {batchZ, batchY})
               table.insert(errorData,
               {
                 batchIterations, -- x-axis
@@ -329,7 +364,7 @@ function main()
             epoch, opt.nEpochs, epoch_tm:time().real))
             
       -- Store network
-      util.save(opt.outputPath .. opt.name .. '_' .. epoch .. 'epochs.t7', encoder, opt.gpu)
+      torch.save(opt.outputPath .. opt.name .. '_' .. epoch .. 'epochs.t7', encoder)
   end
   
 end
