@@ -51,6 +51,8 @@ inputZ:normal(0, 1)
 if opt.gpu > 0 then
     require 'cunn'
     require 'cudnn'
+    inputZ = inputZ:cuda(); inputY = inputY:cuda()
+    cudnn.convert(decG, cudnn)
     decG:cuda()
     cudnn.convert(decG, cudnn)
     inputZ = inputZ:cuda(); inputY = inputY:cuda()
@@ -82,9 +84,15 @@ local output = encG:forward(inputX)
 local outZ = output[1]; local outY = output[2]
 
 print("Are input and output Z equal? ", torch.all(inputZ:eq(outZ)))
-print('\tInputZ: Mean, Stdv, Min, Max', inputZ:mean(), inputZ:std(), inputZ:min(), inputZ:max())
+print('\tInput Z:  Mean, Stdv, Min, Max', inputZ:mean(), inputZ:std(), inputZ:min(), inputZ:max())
 print('\tOutput Z: Mean, Stdv, Min, Max', outZ:mean(), outZ:std(), outZ:min(), outZ:max())
 local error = torch.sum(torch.abs(inputZ-outZ))/(inputZ:size(1)*inputZ:size(2)*inputZ:size(3)*inputZ:size(4))
+print('\tAbsolute error per position: ', error)
+
+print("Are input and output Y equal? ", torch.all(inputY:eq(outY)))
+print('\tInput Y:  Mean, Stdv, Min, Max', inputY:mean(), inputY:std(), inputY:min(), inputY:max())
+print('\tOutput Y: Mean, Stdv, Min, Max', outY:mean(), outY:std(), outY:min(), outY:max())
+local error = torch.sum(torch.abs(inputY-outY))/(inputY:size(1)*inputY:size(2))
 print('\tAbsolute error per position: ', error)
 
 -- Now test if an encoded and then decoded image looks similar to the input image
@@ -108,9 +116,9 @@ if opt.customInputImage > 0 then
             i = i + 1
         end
     end
-
+    inputX:mul(2):add(-1) -- change [0, 1] to [-1, 1]
     print('Images size: ', inputX:size(1)..' x '..inputX:size(2) ..' x '..inputX:size(3)..' x '..inputX:size(4))
-    
+
     if opt.gpu > 0 then
       inputX = inputX:cuda()
     end
@@ -122,7 +130,7 @@ end
 
 outZ:resize(outZ:size(1), outZ:size(2), 1, 1)
 
-if opt.dataset == 'mnist' then
+--[[if opt.dataset == 'mnist' then
     -- Convert to one-hot vector
     local tmp = torch.zeros(1,ny)
     for i=1,outY:size(1) do
@@ -131,7 +139,7 @@ if opt.dataset == 'mnist' then
         tmp[{{},{maxIdx[1][1]}}] = 1
         outY[{{i},{}}] = tmp:clone()
     end
-end
+end--]]
 
 -- Decode it to an output image X2
 local outX = decG:forward{outZ, outY}
