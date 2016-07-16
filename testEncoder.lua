@@ -1,10 +1,10 @@
 require 'image'
 require 'nn'
+optnet = require 'optnet'
 disp = require 'display'
-util = paths.dofile('util.lua')
 torch.setdefaulttensortype('torch.FloatTensor')
 
-opt = {
+local opt = {
     batchSize = 64,         -- number of samples to produce
     decNet = 'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
     encNet = 'checkpoints/encoder128Filters2FC_dataset2_6epochs.t7',
@@ -13,59 +13,78 @@ opt = {
     nz = 100,
     customInputImage = 2,  -- 0 = no custom, only generated images used, 1 = load input image, 2 = load multiple input images
     customImagesPath = 'mnist/images', -- path used wehn customInputImage is 1 (path to single image) or 2 (path to folder with images)
+    -- Conditional GAN parameters
+    dataset = 'mnist',
 }
 torch.manualSeed(123)
 
--- Load net
-local decG = util.load(opt.decNet, opt.gpu)
+local imgExtension = '.png'
 
--- for older models, there was nn.View on the top
--- which is unnecessary, and hinders convolutional generations.
-if torch.type(decG:get(1)) == 'nn.View' then
-    decG:remove(1)
+if opt.gpu > 0 then
+    require 'cunn'
+    require 'cudnn'
 end
 
-local encG = util.load(opt.encNet, opt.gpu)
+local ny -- Y label length. This depends on the dataset.
+if opt.dataset == 'mnist' then ny = 10; imgExtension = '.png'
+elseif opt.dataset == 'celebA' then ny = nil; imgExtension = '.jpg'; error('Not implemented.') end
+
+-- Load nets
+local decG = torch.load(opt.decNet)
+local encG = torch.load(opt.encNet)
 
 --[[ Noise to image (decoder GAN) ]]--
-local inNoise = torch.Tensor(opt.batchSize, opt.nz, opt.imsize, opt.imsize)
-inNoise:normal(0, 1)
+local inputZ = torch.Tensor(opt.batchSize, opt.nz, opt.imsize, opt.imsize)
+local inputY = torch.zeros(opt.batchSize, ny)
+
+-- Y is specific for MNIST dataset
+if opt.dataset == 'mnist' then
+    for i=1,opt.batchSize do
+      inputY[{{i},{((i-1)%ny)+1}}] = 1
+    end
+elseif opt.dataset == 'celebA' then
+    error('Not implemented.')
+end
+
+inputZ:normal(0, 1)
 
 if opt.gpu > 0 then
     require 'cunn'
     require 'cudnn'
     decG:cuda()
-    util.cudnn(decG)
-    inNoise = inNoise:cuda()
+    cudnn.convert(decG, cudnn)
+    inputZ = inputZ:cuda(); inputY = inputY:cuda()
 else
    decG:float()
 end
 decG:evaluate()
 encG:evaluate()
 
+local sampleInput = {inputZ:narrow(1,1,2), inputY:narrow(1,1,2)}
 -- a function to setup double-buffering across the network.
 -- this drastically reduces the memory needed to generate samples
-util.optimizeInferenceMemory(decG)
+optnet.optimizeMemory(decG, sampleInput)
 
--- Clone is needed, otherwise next forward call will overwrite inImage
-local inImage = decG:forward(inNoise):clone()
-print('Images size: ', inImage:size(1)..' x '..inImage:size(2) ..' x '..inImage:size(3)..' x '..inImage:size(4))
+-- Clone is needed, otherwise next forward call will overwrite inputX
+local inputX = decG:forward{inputZ, inputY}:clone()
+print('Images size: ', inputX:size(1)..' x '..inputX:size(2) ..' x '..inputX:size(3)..' x '..inputX:size(4))
 --[[ Image to noise (encoder GAN) ]]--
 -- Output noise should be equal to input noise
 
 if opt.gpu > 0 then
     encG:cuda()
-    inImage = inImage:cuda()
+    inputX = inputX:cuda()
 else
     encG:float()
 end
 
-local outNoise = encG:forward(inImage)
+local output = encG:forward(inputX)
+local outZ = output[1]; local outY = output[2]
 
-print("Are input and output noise equal? ", torch.all(inNoise:eq(outNoise)))
-print('\tinNoise: Mean, Stdv, Min, Max', inNoise:mean(), inNoise:std(), inNoise:min(), inNoise:max())
-print('\toutNoise: Mean, Stdv, Min, Max', outNoise:mean(), outNoise:std(), outNoise:min(), outNoise:max())
-local error = torch.sum(torch.abs(inNoise-outNoise))/(inNoise:size(1)*inNoise:size(2)*inNoise:size(3)*inNoise:size(4))
+print("Are input and output Z equal? ", torch.all(inputZ:eq(outZ)))
+print('\tInputZ: Mean, Stdv, Min, Max', inputZ:mean(), inputZ:std(), inputZ:min(), inputZ:max())
+print('\tOutput Z: Mean, Stdv, Min, Max', outZ:mean(), outZ:std(), outZ:min(), outZ:max())
+local error = torch.sum(torch.abs(inputZ-outZ))/(inputZ:size(1)*inputZ:size(2)*inputZ:size(3)*inputZ:size(4))
 print('\tAbsolute error per position: ', error)
 
 -- Now test if an encoded and then decoded image looks similar to the input image
@@ -73,42 +92,54 @@ if opt.customInputImage > 0 then
     if opt.customInputImage == 1 then
         -- Load input image X (optional)
         local tmp = image.load(opt.customImagesPath)
-        tmp = image.scale(tmp, inImage:size(3), inImage:size(4))
+        tmp = image.scale(tmp, inputX:size(3), inputX:size(4))
         -- Image dimensions is 3. We need a 4th dimension indicating the number of images.
-        tmp:resize(1, inImage:size(2), inImage:size(3), inImage:size(4))
-        inImage = tmp
+        tmp:resize(1, inputX:size(2), inputX:size(3), inputX:size(4))
+        inputX = tmp
     else
         -- Load multiple images given a path
         assert(paths.dir(opt.customImagesPath)~=nil, "customImagesPath is not a directory")
         local i = 1
-        local fileIterator = paths.files(opt.customImagesPath, '.png')
+        local fileIterator = paths.files(opt.customImagesPath, imgExtension)
         while i <= opt.batchSize do
             local imPath = opt.customImagesPath .. '/' .. fileIterator()
             local im = image.load(imPath)
-            inImage[{{i},{},{},{}}] = image.scale(im, inImage:size(3), inImage:size(4))
+            inputX[{{i},{},{},{}}] = image.scale(im, inputX:size(3), inputX:size(4))
             i = i + 1
         end
     end
 
-    print('Images size: ', inImage:size(1)..' x '..inImage:size(2) ..' x '..inImage:size(3)..' x '..inImage:size(4))
+    print('Images size: ', inputX:size(1)..' x '..inputX:size(2) ..' x '..inputX:size(3)..' x '..inputX:size(4))
     
     if opt.gpu > 0 then
-      inImage = inImage:cuda()
+      inputX = inputX:cuda()
     end
     
     -- Encode it to noise Z
-    outNoise = encG:forward(inImage)
+    output = encG:forward(inputX)
+    local outZ = output[1]; local outY = output[2]
 end
 
-outNoise:resize(outNoise:size(1), outNoise:size(2), 1, 1)
+outZ:resize(outZ:size(1), outZ:size(2), 1, 1)
+
+if opt.dataset == 'mnist' then
+    -- Convert to one-hot vector
+    local tmp = torch.zeros(1,ny)
+    for i=1,outY:size(1) do
+        tmp:zero()
+        local _, maxIdx = torch.max(outY[{{i},{}}],2)
+        tmp[{{},{maxIdx[1][1]}}] = 1
+        outY[{{i},{}}] = tmp:clone()
+    end
+end
 
 -- Decode it to an output image X2
-local outImage = decG:forward(outNoise)
+local outX = decG:forward{outZ, outY}
 
 -- Display input and output image
-disp.image(inImage, {title='Input image'})
-disp.image(outImage, {title='Encoded and decoded image'})
-print("Are input and output images equal? ", torch.all(inImage:eq(outImage)))
-image.save('inputImage.png', image.toDisplayTensor(inImage,0,torch.round(math.sqrt(opt.batchSize))))
-image.save('reconstructedImage.png', image.toDisplayTensor(outImage,0,torch.round(math.sqrt(opt.batchSize))))
+disp.image(inputX, {title='Input image'})
+disp.image(outX, {title='Encoded and decoded image'})
+print("Are input and output images equal? ", torch.all(inputX:eq(outX)))
+image.save('inputImage.png', image.toDisplayTensor(inputX,0,torch.round(math.sqrt(opt.batchSize))))
+image.save('reconstructedImage.png', image.toDisplayTensor(outX,0,torch.round(math.sqrt(opt.batchSize))))
 
