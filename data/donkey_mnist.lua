@@ -20,7 +20,11 @@ local ySize = 10
 -------- COMMON
 local mnist = require 'mnist'
 local trainSet = mnist.traindataset()
-
+local labelDistr = torch.zeros(ySize)
+for i=1,trainSet.size do
+    labelDistr[trainSet.label[i]+1] = labelDistr[trainSet.label[i]+1] + 1
+end
+labelDistr:div(labelDistr:sum()) -- normalize to [0, 1]
 --------------------------------------------------------------------------------------------
 local loadSize   = {1, opt.loadSize}
 local sampleSize = {1, opt.fineSize}
@@ -90,13 +94,12 @@ function trainLoader:sample(quantity)
 end
 
 function trainLoader:sampleY(quantity)
-    -- TO-DO
-    -- Potser aquí hauria d'anar la interpolació també
+    -- TODO: MNIST interpolation?
     local y = torch.zeros(quantity, ySize)
     local randIdx = torch.randperm(trainSet.size):narrow(1,1,quantity)
     for i=1,quantity do
-        local class = trainSet.label[randIdx[i]]
-        y[{{i},{class+1}}] = 1 -- PROVISIONAL WORKAROUND
+        local class = torch.multinomial(labelDistr,1)
+        y[{{i},{class}}] = 1
     end
     collectgarbage()
     return y
