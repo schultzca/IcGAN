@@ -96,7 +96,6 @@ end
 function trainLoader:sampleY(quantity)
     -- TODO: MNIST interpolation?
     local y = torch.zeros(quantity, ySize)
-    local randIdx = torch.randperm(trainSet.size):narrow(1,1,quantity)
     for i=1,quantity do
         local class = torch.multinomial(labelDistr,1)
         y[{{i},{class}}] = 1
