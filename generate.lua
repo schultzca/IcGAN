@@ -95,17 +95,12 @@ elseif opt.noisemode == 'linefull' then
     end
 end
 
-local sample_input = {torch.randn(2,opt.nz,1,1), torch.randn(2,ny)}
 if opt.gpu > 0 then
     net:cuda()
     cudnn.convert(net, cudnn)
     Z = Z:cuda()
     Y = Y:cuda()
-    sample_input[1] = sample_input[1]:cuda()
-    sample_input[2] = sample_input[2]:cuda()
 else
-   sample_input[1] = sample_input[1]:float()
-   sample_input[2] = sample_input[2]:float()
    net:float()
 end
 local sampleInput = {Z:narrow(1,1,2), Y:narrow(1,1,2)}
