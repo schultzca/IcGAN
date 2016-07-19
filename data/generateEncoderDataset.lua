@@ -7,7 +7,7 @@
 require 'image'
 require 'nn'
 require "lfs"
-util = paths.dofile('../util.lua')
+local optnet = require 'optnet'
 torch.setdefaulttensortype('torch.FloatTensor')
 --torch.manualSeed(123) -- This only works if gpu == 0
 
@@ -34,46 +34,76 @@ local function getParameters()
       print("Warning: creating dataset with storeAsTensor == false. Storing as images instead of tensor is a lossy process.")
   end
   
+  if opt.gpu > 0 then
+      require 'cunn'
+      require 'cudnn'
+  end
+  
   return opt
+end
+
+local function stabilizeBN(net, input, noiseType)
+  -- When using a net in evaluation mode, running_mean and running_var
+  -- from BN layers might be a bit off from training, which yields to major
+  -- differences between images generated on training mode from evaluation mode.
+  -- To avoid this, we do some mini-batches iterations without training so that
+  -- they are re-estimated, and then we save the network again.
+  for i=1,100 do
+      -- Set noise depending on the type
+      if noiseType == 'uniform' then
+          input[1]:uniform(-1, 1)
+      elseif noiseType == 'normal' then
+          input[1]:normal(0, 1)
+      end
+      
+      -- Generate images
+      net:forward(input)
+      net.__BNrefreshed = true
+  end
 end
 
 local function initializeNet(net, opt)
   -- Initializes the net and the input noise.
   -- This involves passing the network to GPU and other optimizations.
   
-   -- for older models, there was nn.View on the top
-  -- which is unnecessary, and hinders convolutional generations.
-  if torch.type(net:get(1)) == 'nn.View' then
-      net:remove(1)
+  local Z = torch.Tensor(opt.batchSize, opt.nz, opt.imsize, opt.imsize)
+
+  local Y
+  if opt.dataset == 'mnist' then
+      opt.ny = 10 -- Y length
+      Y = torch.zeros(opt.batchSize, opt.ny)
+      for i=1,opt.batchSize do
+        Y[{{i},{((i-1)%opt.ny)+1}}] = 1 -- Y specific to MNIST dataset
+      end
+  elseif opt.dataset == 'celebA' then
+      error('Not implemented.')
   end
   
-  local noise = torch.Tensor(opt.batchSize, opt.nz, opt.imsize, opt.imsize)
-  
   if opt.gpu > 0 then
-      require 'cunn'
-      require 'cudnn'
       net = net:cuda()
-      util.cudnn(net)
-      noise = noise:cuda()
+      cudnn.convert(net, cudnn)
+      Z = Z:cuda(); Y = Y:cuda()
   else
       net:float()
   end
+  local sampleInput = {Z:narrow(1,1,2), Y:narrow(1,1,2)}
+  optnet.optimizeMemory(net, sampleInput)
   
-  util.optimizeInferenceMemory(net)
-  
-  if opt.refreshBN then
+  -- Refresh mean and std from BN layers. This needs to be done at least once after training.
+  if not net.__BNrefreshed then
       -- There's no need to do this more than once. Once the network with
-      -- the refreshed BN is saved, you can put opt.refreshBN to false again
-      -- as long as you use the same network.
-      util.stabilizeBN(net,noise,'normal')
-      util.save(opt.net, net, opt.gpu)
+      -- the refreshed BN is saved, net.__BNrefreshed will indicate whether
+      -- its BN has been refreshed or not.
+      print('Refreshing BN...')
+      stabilizeBN(net,{Z,Y},'normal')
+      torch.save(opt.net, net)
   end
     
   -- Put network to evaluate mode so batch normalization layers 
   -- do not change its parameters on test time.
   net:evaluate()
   
-  return net, noise
+  return net, Z, Y
 end
 
 local function createFolder(path)
@@ -89,9 +119,10 @@ local function initializeOutputFile(opt, nSamplesReal, net)
   if opt.storeAsTensor then
       outFile = {
         storeAsTensor = opt.storeAsTensor,
-        images = nil, -- This value will be updated below
+        X = nil, -- This value will be updated below
         imSize = nil, -- This value will be updated below
-        noises = torch.Tensor(nSamplesReal, opt.nz, opt.imsize, opt.imsize)
+        Z = torch.Tensor(nSamplesReal, opt.nz, opt.imsize, opt.imsize),
+        Y = torch.Tensor(nSamplesReal, opt.ny)
       }
   
   else
@@ -100,23 +131,27 @@ local function initializeOutputFile(opt, nSamplesReal, net)
         relativePath = opt.outputFolder..'images/', -- write relative path once, not for every image
         imNames = {},
         imSize = nil, -- This value will be updated below
-        noises = torch.Tensor(nSamplesReal, opt.nz, opt.imsize, opt.imsize)
+        Z = torch.Tensor(nSamplesReal, opt.nz, opt.imsize, opt.imsize),
+        Y = torch.Tensor(nSamplesReal, opt.ny)
       }
   end
   
-  -- Input noise to the net to know the output image size
-  local noise = outFile.noises[{{1},{},{},{}}]
-  if opt.gpu > 0 then noise = noise:cuda() end 
-  local imSize = net:forward(noise):size() 
+  -- Input Z to the net to know the output image size
+  local sampleInput = {outFile.Z:narrow(1,1,2), outFile.Y:narrow(1,1,2)}
+  if opt.gpu > 0 then 
+      sampleInput[1] = sampleInput[1]:cuda() 
+      sampleInput[2] = sampleInput[2]:cuda()
+  end 
+  local imSize = net:forward(sampleInput):size() 
   outFile.imSize = {imSize[2], imSize[3], imSize[4]}
-  if opt.storeAsTensor then outFile.images = torch.Tensor(nSamplesReal, imSize[2], imSize[3], imSize[4]) end
+  if opt.storeAsTensor then outFile.X = torch.Tensor(nSamplesReal, imSize[2], imSize[3], imSize[4]) end
   
   return outFile
 end
 
-local function saveData2Txt(imageSet, noise, path, idx)
+local function saveData2Txt(imageSet, Z, path, idx)
 -- imageSet dimension: # of images x im3 x im2 x im1
--- noise: # of images x nz x 1 x 1
+-- Z: # of images x nz x 1 x 1
 -- path: folder where the images will be stored
 -- idx: index used to name the image file
 
@@ -131,20 +166,22 @@ local function saveData2Txt(imageSet, noise, path, idx)
         image.save(outputFile, im)
         -- Write path to file
         file:write(outputFile, "\t")
-        -- Write noise to file
-        file:write(noise[{{j},{},{},{}}]:type('torch.CharTensor'), "\n")
+        -- Write Z to file
+        file:write(Z[{{j},{},{},{}}]:type('torch.CharTensor'), "\n")
     end
 
     file:close()
 end
 
-local function saveData(imageSet, noise, outFile, path, storeAsTensor, idx)
+local function saveData(imageSet, Z, Y, outFile, path, storeAsTensor, idx)
 -- imageSet dimension: # of images x im3 x im2 x im1
--- noise: # of images x nz x 1 x 1
+-- Z: # of images x nz x 1 x 1
+-- Y: # of images x ny
 -- path: folder where the images will be stored
 -- idx: base index to know where to store things in outFile
     
     if not storeAsTensor then
+        -- Store as images
         for j=1,imageSet:size(1) do
             local i = idx+j-1
             local imageName = string.format("%.7d.png",i)
@@ -158,22 +195,23 @@ local function saveData(imageSet, noise, outFile, path, storeAsTensor, idx)
         end
     else
         -- Update output file with image tensors
-        outFile.images[{{idx,idx+imageSet:size(1)-1},{},{},{}}] = imageSet:float() -- float() is necessary in case noise is in GPU
+        outFile.X[{{idx,idx+imageSet:size(1)-1},{},{},{}}] = imageSet:float() -- float() is necessary in case Z is in GPU
     end
-    -- Update output file with noise
-    outFile.noises[{{idx,idx+imageSet:size(1)-1},{},{},{}}] = noise:float() -- float() is necessary in case noise is in GPU
+    -- Update output file with Z
+    outFile.Z[{{idx,idx+imageSet:size(1)-1},{},{},{}}] = Z:float() -- float() is necessary in case Z is in GPU
+    outFile.Y[{{idx,idx+imageSet:size(1)-1},{}}] = Y:float()
   
 end
 
 function main()
 
-  opt = getParameters()
+  local opt = getParameters()
   
   -- Load generative network
-  local net = util.load(opt.net, opt.gpu)
-  local noise
+  local net = torch.load(opt.net)
+  local Z, Y
   
-  net, noise = initializeNet(net, opt)
+  net, Z, Y = initializeNet(net, opt)
   
   -- Create output folder path and other subfolders
   createFolder(opt.outputFolder)
@@ -189,22 +227,22 @@ function main()
   -- Initialize output file that will contain all the information
   local outFile = initializeOutputFile(opt, nSamplesReal, net)
   
-  -- Create as many pairs of generated image and noise vector
+  -- Create as many pairs of generated image and {Z, Y} vector
   -- as specified by opt.samples.
   local imageSet
   for i=1,opt.samples,opt.batchSize do
-      -- Set noise depending on the type
+      -- Set Z depending on the type
       if opt.noisetype == 'uniform' then
-          noise:uniform(-1, 1)
+          Z:uniform(-1, 1)
       elseif opt.noisetype == 'normal' then
-          noise:normal(0, 1)
+          Z:normal(0, 1)
       end
       
       -- Generate images (number specified by opt.batchSize)
-      imageSet = net:forward(noise)
+      imageSet = net:forward{Z,Y}
       
-      -- Save images and update dataset file with image path and its vector noise
-      saveData(imageSet, noise, outFile, opt.outputFolder, opt.storeAsTensor, i)
+      -- Save images and update dataset file with image path and its vector Z
+      saveData(imageSet, Z, Y, outFile, opt.outputFolder, opt.storeAsTensor, i)
       print(string.format("%d/%d",torch.ceil(i/opt.batchSize),torch.ceil(opt.samples/opt.batchSize)))
   end
 
