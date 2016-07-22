@@ -98,7 +98,7 @@ function trainLoader:sampleY(quantity)
     local y = torch.zeros(quantity, ySize)
     for i=1,quantity do
         local class = torch.multinomial(labelDistr,1)
-        y[{{i},{class}}] = 1
+        y[{{i},{class[1]}}] = 1
     end
     collectgarbage()
     return y
