@@ -6,13 +6,12 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 local opt = {
     batchSize = 64,         -- number of samples to produce
-    decNet = 'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
-    encNet = 'checkpoints/encoder128Filters2FC_dataset2_6epochs.t7',
-    imsize = 1,            -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px,
+    decNet = 'checkpoints/c_mnist_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
+    encNet = 'checkpoints/encoder_c_mnist_6epochs.t7',--'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,
     customInputImage = 2,  -- 0 = no custom, only generated images used, 1 = load input image, 2 = load multiple input images
-    customImagesPath = 'mnist/images', -- path used wehn customInputImage is 1 (path to single image) or 2 (path to folder with images)
+    customImagesPath = 'mnist/imagesTest/', --'mnist/images', -- path used wehn customInputImage is 1 (path to single image) or 2 (path to folder with images)
     -- Conditional GAN parameters
     dataset = 'mnist',
 }
@@ -34,7 +33,7 @@ local decG = torch.load(opt.decNet)
 local encG = torch.load(opt.encNet)
 
 --[[ Noise to image (decoder GAN) ]]--
-local inputZ = torch.Tensor(opt.batchSize, opt.nz, opt.imsize, opt.imsize)
+local inputZ = torch.Tensor(opt.batchSize, opt.nz, 1, 1)
 local inputY = torch.zeros(opt.batchSize, ny)
 
 -- Y is specific for MNIST dataset
@@ -54,8 +53,6 @@ if opt.gpu > 0 then
     inputZ = inputZ:cuda(); inputY = inputY:cuda()
     cudnn.convert(decG, cudnn)
     decG:cuda()
-    cudnn.convert(decG, cudnn)
-    inputZ = inputZ:cuda(); inputY = inputY:cuda()
 else
    decG:float()
 end
