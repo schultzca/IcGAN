@@ -250,7 +250,7 @@ local fDx = function(x)
        Z:normal(0, 1)
    end
    
-   local yFake = data:sampleY() -- TO DO
+   local yFake = data:sampleY()
    Y:copy(yFake)
    local xFake = netG:forward{Z, Y}
    X:copy(xFake)
