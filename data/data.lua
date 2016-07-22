@@ -52,21 +52,26 @@ function data.new(n, dataset_name, opt_)
       function self.threads:synchronize() end
    end
 
-   local nSamples = 0
+   local nSamples, ySize = 0
    self.threads:addjob(function() return trainLoader:size() end,
          function(c) nSamples = c end)
    self.threads:synchronize()
    self._size = nSamples
-
-   for i = 1, n do
-      self.threads:addjob(self._getFromThreads,
+   
+   self.threads:addjob(function() return trainLoader:ySize() end,
+         function(c) ySize = c end)
+   self.threads:synchronize()
+   self._ySize = ySize
+  
+   --[[or i = 1, n do
+      self.threads:addjob(self._getBatchFromThreads,
                           self._pushResult)
-   end
+   end--]]
 
    return self
 end
 
-function data._getFromThreads()
+function data._getBatchFromThreads()
    assert(opt.batchSize, 'opt.batchSize not found')
    return trainLoader:sample(opt.batchSize)
 end
@@ -79,11 +84,27 @@ function data._pushResult(...)
    result[1] = res
 end
 
-
-
 function data:getBatch()
    -- queue another job
-   self.threads:addjob(self._getFromThreads, self._pushResult)
+   self.threads:addjob(self._getBatchFromThreads, self._pushResult)
+   self.threads:dojob()
+   local res = result[1]
+   result[1] = nil
+   if torch.type(res) == 'table' then
+      return unpack(res)
+   end
+   print(type(res))
+   return res
+end
+
+function data._sampleYFromThreads()
+   assert(opt.batchSize, 'opt.batchSize not found')
+   return trainLoader:sampleY(opt.batchSize)
+end
+
+function data:sampleY()
+    -- queue another job
+   self.threads:addjob(self._sampleYFromThreads, self._pushResult)
    self.threads:dojob()
    local res = result[1]
    result[1] = nil
@@ -96,6 +117,10 @@ end
 
 function data:size()
    return self._size
+end
+
+function data:ySize()
+   return self._ySize
 end
 
 return data

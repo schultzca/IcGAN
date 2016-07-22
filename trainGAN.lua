@@ -3,10 +3,10 @@ require 'nn'
 require 'optim'
 
 opt = {
-   dataset = 'folder',       -- imagenet / lsun / folder
+   dataset = 'mnist',       -- imagenet / lsun / folder
    batchSize = 64,
-   loadSize = 96,--33, -- 96,
-   fineSize = 64,--32, -- 64,
+   loadSize = 32, -- 96,
+   fineSize = 32, -- 64,
    nz = 100,               -- #  of dim for Z
    ngf = 64,               -- #  of gen filters in first conv layer
    ndf = 64,               -- #  of discrim filters in first conv layer
@@ -18,8 +18,11 @@ opt = {
    display = 1,            -- display samples while training. 0 = false
    display_id = 10,        -- display window id.
    gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
-   name = 'celebA_aligned',
+   name = 'c_mnist',
    noise = 'normal',       -- uniform / normal
+   dataRoot = 'mnist',
+   -- Parameters for conditioned GAN
+   trainWrongY = true   -- explicitly train discriminator with real images and wrong Y error
 }
 
 -- one-line argument parser. parses enviroment variables to override the defaults
@@ -56,16 +59,22 @@ end
 local nz = opt.nz
 local ndf = opt.ndf
 local ngf = opt.ngf
-local real_label = 1
-local fake_label = 0
+local ny = data:ySize()
+local labelReal = 1
+local labelFake = 0
 
 local SpatialBatchNormalization = nn.SpatialBatchNormalization
 local SpatialConvolution = nn.SpatialConvolution
 local SpatialFullConvolution = nn.SpatialFullConvolution
 
 local netG = nn.Sequential()
--- input is Z, going into a convolution
-netG:add(SpatialFullConvolution(nz, ngf * 8, 4, 4))
+-- Concatenate Z and Y
+--    Concatenate on first (non-batch) dimension, 
+--    where non-batch input has 3 dimensions
+netG:add(nn.JoinTable(1,3))
+ 
+--[[-- input is Z+Y, going into a convolution
+netG:add(SpatialFullConvolution(nz + ny, ngf * 8, 4, 4))
 netG:add(SpatialBatchNormalization(ngf * 8)):add(nn.ReLU(true))
 -- state size: (ngf*8) x 4 x 4
 -- Alternatively, you could perform a 5x5 convolution with 2 padding 
@@ -82,10 +91,10 @@ netG:add(SpatialBatchNormalization(ngf)):add(nn.ReLU(true))
 -- state size: (ngf) x 32 x 32
 netG:add(SpatialFullConvolution(ngf, nc, 4, 4, 2, 2, 1, 1))
 netG:add(nn.Tanh())
--- state size: (nc) x 64 x 64 
+-- state size: (nc) x 64 x 64 --]]
 
--- input is Z, going into a convolution
---[[netG:add(SpatialFullConvolution(nz, ngf * 4, 4, 4))
+-- input is Z+Y, going into a convolution
+netG:add(SpatialFullConvolution(nz + ny, ngf * 4, 4, 4))
 netG:add(SpatialBatchNormalization(ngf * 4)):add(nn.ReLU(true))
 -- state size: (ngf*8) x 4 x 4
 -- Alternatively, you could perform a 5x5 convolution with 2 padding 
@@ -98,27 +107,48 @@ netG:add(SpatialBatchNormalization(ngf)):add(nn.ReLU(true))
 -- state size: (ngf*2) x 16 x 16
 netG:add(SpatialFullConvolution(ngf, nc, 4, 4, 2, 2, 1, 1))
 netG:add(nn.Tanh())
--- state size: (nc) x 32 x 32--]]
+-- state size: (nc) x 32 x 32
 
 netG:apply(weights_init)
 
 local netD = nn.Sequential()
 
+-- Need a parallel table to put different layers for X (conv layers) 
+-- and Y (none) before joining both inputs together.
+local pt = nn.ParallelTable()
+
+-- Convolutions applied only on X input
+local Xconv = nn.Sequential() 
 -- input is (nc) x 64 x 64
-netD:add(SpatialConvolution(nc, ndf, 4, 4, 2, 2, 1, 1))
-netD:add(nn.LeakyReLU(0.2, true))
+Xconv:add(SpatialConvolution(nc, ndf, 4, 4, 2, 2, 1, 1))
+Xconv:add(nn.LeakyReLU(0.2, true))
 -- state size: (ndf) x 32 x 32
-netD:add(SpatialConvolution(ndf, ndf * 2, 4, 4, 2, 2, 1, 1))
-netD:add(SpatialBatchNormalization(ndf * 2)):add(nn.LeakyReLU(0.2, true))
--- state size: (ndf*2) x 16 x 16
-netD:add(SpatialConvolution(ndf * 2, ndf * 4, 4, 4, 2, 2, 1, 1))
+Xconv:add(SpatialConvolution(ndf, ndf * 2, 4, 4, 2, 2, 1, 1))
+Xconv:add(SpatialBatchNormalization(ndf * 2)):add(nn.LeakyReLU(0.2, true))
+
+-- Replicate Y to match convolutional filter dimensions
+local Yrepl = nn.Sequential()
+-- ny -> ny x 8 (replicate 2nd dimension)
+Yrepl:add(nn.Replicate(8,2,1)) -- 8-> MNIST (size 32x32), 16 -> celebA (size 64x64)
+-- ny x 8 -> ny x 8 x 8 (replicate 3rd dimension)
+Yrepl:add(nn.Replicate(8,3,2))
+
+-- Join X and Y
+pt:add(Xconv)
+pt:add(Yrepl)
+netD:add(pt)
+netD:add(nn.JoinTable(1,3))
+
+-- Convolutions applied on both X and Y
+-- state size: (ndf*2 + ny) x 16 x 16
+netD:add(SpatialConvolution(ndf * 2 + ny, ndf * 4, 4, 4, 2, 2, 1, 1))
 netD:add(SpatialBatchNormalization(ndf * 4)):add(nn.LeakyReLU(0.2, true))
 -- state size: (ndf*4) x 8 x 8
-netD:add(SpatialConvolution(ndf * 4, ndf * 8, 4, 4, 2, 2, 1, 1)) -- Comentar per MNIST
-netD:add(SpatialBatchNormalization(ndf * 8)):add(nn.LeakyReLU(0.2, true)) -- Comentar per MNIST
+--netD:add(SpatialConvolution(ndf * 4, ndf * 8, 4, 4, 2, 2, 1, 1)) -- Comentar per MNIST
+--netD:add(SpatialBatchNormalization(ndf * 8)):add(nn.LeakyReLU(0.2, true)) -- Comentar per MNIST
 -- state size: (ndf*8) x 4 x 4
-netD:add(SpatialConvolution(ndf * 8, 1, 4, 4)) -- Comentar per MNIST
---netD:add(SpatialConvolution(ndf * 4, 1, 4, 4)) -- Descomentar per MNIST
+--netD:add(SpatialConvolution(ndf * 8, 1, 4, 4)) -- Comentar per MNIST
+netD:add(SpatialConvolution(ndf * 4, 1, 4, 4)) -- Descomentar per MNIST
 netD:add(nn.Sigmoid())
 -- state size: 1 x 1 x 1
 netD:add(nn.View(1):setNumInputDims(nc))
@@ -137,9 +167,11 @@ optimStateD = {
    beta1 = opt.beta1,
 }
 ----------------------------------------------------------------------------
-local input = torch.Tensor(opt.batchSize, nc, opt.fineSize, opt.fineSize)
-local noise = torch.Tensor(opt.batchSize, nz, 1, 1)
-local label = torch.Tensor(opt.batchSize)
+local X = torch.Tensor(opt.batchSize, nc, opt.fineSize, opt.fineSize) -- input images
+local Z = torch.Tensor(opt.batchSize, nz, 1, 1) -- input noise
+local Y = torch.Tensor(opt.batchSize, ny)
+local Y_vis = torch.zeros(opt.batchSize, ny)
+local label = torch.Tensor(opt.batchSize) -- indicates whether images are real or generated
 local errD, errG
 local epoch_tm = torch.Timer()
 local tm = torch.Timer()
@@ -148,7 +180,7 @@ local data_tm = torch.Timer()
 if opt.gpu > 0 then
    require 'cunn'
    cutorch.setDevice(opt.gpu)
-   input = input:cuda();  noise = noise:cuda();  label = label:cuda()
+   X = X:cuda();  Z = Z:cuda(); Y = Y:cuda(); Y_vis = Y_vis:cuda(); label = label:cuda()
 
    if pcall(require, 'cudnn') then
       require 'cudnn'
@@ -164,7 +196,12 @@ local parametersG, gradParametersG = netG:getParameters()
 
 if opt.display then disp = require 'display' end
 
-noise_vis = noise:clone()
+local noise_vis = Z:clone()
+-- PROVISIONAL --
+for i=1,opt.batchSize do
+  Y_vis[{{i},{((i-1)%ny)+1}}] = 1
+end
+
 if opt.noise == 'uniform' then
     noise_vis:uniform(-1, 1)
 elseif opt.noise == 'normal' then
@@ -177,32 +214,53 @@ local fDx = function(x)
 
    -- train with real
    data_tm:reset(); data_tm:resume()
-   local real = data:getBatch()
+   local xReal, yReal, yWrong = data:getBatch()
    data_tm:stop()
-   input:copy(real)
-   label:fill(real_label)
+   X:copy(xReal)
+   Y:copy(yReal)
+   label:fill(labelReal)
 
-   local output = netD:forward(input)
+   -- Train with real images X and correct conditioning vectors Y
+   local output = netD:forward{X, Y}
    local errD_real = torch.sum(output:lt(0.5))/output:size(1)
    criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
-   netD:backward(input, df_do)
-
-   -- train with fake
-   if opt.noise == 'uniform' then -- regenerate random noise
-       noise:uniform(-1, 1)
-   elseif opt.noise == 'normal' then
-       noise:normal(0, 1)
+   if opt.trainWrongY then 
+        df_do:mul(0.5) -- Real image error is shared equally between real Y and wrong Y 
    end
-   local fake = netG:forward(noise)
-   input:copy(fake)
-   label:fill(fake_label)
+   netD:backward({X, Y}, df_do)
+   
+   -- Train with real images and wrong Y
+   if opt.trainWrongY then
+      Y:copy(yWrong)
+      label:fill(labelFake)
+      
+      output = netD:forward{X, Y}
+      --errD_real = ((torch.sum(output:lt(0.5))/output:size(1)) + errD_real)/2
+      criterion:forward(output, label)
+      df_do = criterion:backward(output, label)
+      df_do:mul(0.5)
+      netD:backward({X, Y}, df_do)
+   end
 
-   local output = netD:forward(input)
+   -- Train with fake images and sampled Y
+   if opt.noise == 'uniform' then -- regenerate random noise
+       Z:uniform(-1, 1)
+   elseif opt.noise == 'normal' then
+       Z:normal(0, 1)
+   end
+   
+   local yFake = data:sampleY()
+   Y:copy(yFake)
+   local xFake = netG:forward{Z, Y}
+   X:copy(xFake)
+   label:fill(labelFake)
+
+   local output = netD:forward{X, Y}
    local errD_fake = torch.sum(output:ge(0.5))/output:size(1)
    criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
-   netD:backward(input, df_do)
+   netD:backward({X, Y}, df_do)
 
    -- Error indicates % of how many samples have been incorrectly guessed by the discriminator
    errD = (errD_real + errD_fake) / 2
@@ -215,21 +273,27 @@ local fGx = function(x)
    gradParametersG:zero()
 
    --[[ the three lines below were already executed in fDx, so save computation
-   noise:uniform(-1, 1) -- regenerate random noise
-   local fake = netG:forward(noise)
-   input:copy(fake) ]]--
-   label:fill(real_label) -- fake labels are real for generator cost
-
-   local output = netD:forward(input) -- Need to compute output again, as D has been updated in fDx
+   Z:uniform(-1, 1) -- regenerate random noise
+   local xFake = netG:forward(Z)
+   X:copy(xFake) 
+   Y:copy(yFake)]]--
+   label:fill(labelReal) -- fake labels are real for generator cost
+  
+   -- Need to compute output again, as D has been updated in fDx
+   local output = netD:forward{X, Y}
    errG = criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
-   local df_dg = netD:updateGradInput(input, df_do)
+   local df_dg = netD:updateGradInput({X, Y}, df_do)
    -- df_dg contains the gradients w.r.t. generated images by G,
    -- which is precisely what you want to apply at G's backward step.
    -- df_do is not used on G's bkwrd step because they are the gradients
    -- w.r.t. D output, which is only a one-dimensional vector with
    -- the score between 0 and 1 of real/fake of a set of generated images.
-   netG:backward(noise, df_dg)
+   
+   -- df_dg[1] contains the gradient of generated images X (G output, D input)
+   -- which are the ones you need to compute the backward step.
+   -- df_dg[2] contains the gradient of Y. You don't need them as they are not G's output.
+   netG:backward({Z, Y}, df_dg[1])  
    return errG, gradParametersG
 end
 
@@ -270,9 +334,9 @@ for epoch = 1, opt.niter do
       -- display
       counter = counter + 1
       if counter % 10 == 0 and opt.display then
-          local fake = netG:forward(noise_vis)
+          local fake = netG:forward{noise_vis, Y_vis}
           local real = data:getBatch()
-          disp.image(fake, {win=opt.display_id, title=opt.name .. '. Generated images'})
+          disp.image(image.toDisplayTensor(fake,0,10), {win=opt.display_id, title=opt.name .. '. Generated images'})
           disp.image(real, {win=opt.display_id*3, title=opt.name .. '. Real images'})
           -- display generator and discriminator error
           table.insert(errorData,
