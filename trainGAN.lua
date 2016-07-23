@@ -8,7 +8,7 @@ opt = {
    loadSize = 32, -- 96,
    fineSize = 32, -- 64,
    nz = 100,               -- #  of dim for Z
-   ngf = 64,               -- #  of gen filters in first conv layer
+   ngf = 64,               -- #  of gen filters in last deconv layer
    ndf = 64,               -- #  of discrim filters in first conv layer
    nThreads = 4,           -- #  of data loading threads to use
    niter = 25,             -- #  of iter at starting learning rate
@@ -35,6 +35,8 @@ print("Random Seed: " .. opt.manualSeed)
 torch.manualSeed(opt.manualSeed)
 torch.setnumthreads(1)
 torch.setdefaulttensortype('torch.FloatTensor')
+assert(opt.fineSize >= 8, "Minimum fineSize is 8x8.")
+assert(opt.fineSize % 2 == 0, "fineSize must be multiple of 2.")
 
 -- create data loader
 local DataLoader = paths.dofile('data/data.lua')
@@ -73,41 +75,28 @@ local netG = nn.Sequential()
 --    where non-batch input has 3 dimensions
 netG:add(nn.JoinTable(1,3))
  
---[[-- input is Z+Y, going into a convolution
-netG:add(SpatialFullConvolution(nz + ny, ngf * 8, 4, 4))
-netG:add(SpatialBatchNormalization(ngf * 8)):add(nn.ReLU(true))
--- state size: (ngf*8) x 4 x 4
--- Alternatively, you could perform a 5x5 convolution with 2 padding 
--- instead of a 4x4 convolution with 1 padding.
-netG:add(SpatialFullConvolution(ngf * 8, ngf * 4, 4, 4, 2, 2, 1, 1))
---netG:add(SpatialFullConvolution(nz, ngf * 4, 4, 4, 2, 2, 1, 1))
-netG:add(SpatialBatchNormalization(ngf * 4)):add(nn.ReLU(true))
--- state size: (ngf*4) x 8 x 8
-netG:add(SpatialFullConvolution(ngf * 4, ngf * 2, 4, 4, 2, 2, 1, 1))
-netG:add(SpatialBatchNormalization(ngf * 2)):add(nn.ReLU(true))
--- state size: (ngf*2) x 16 x 16
-netG:add(SpatialFullConvolution(ngf * 2, ngf, 4, 4, 2, 2, 1, 1))
-netG:add(SpatialBatchNormalization(ngf)):add(nn.ReLU(true))
--- state size: (ngf) x 32 x 32
-netG:add(SpatialFullConvolution(ngf, nc, 4, 4, 2, 2, 1, 1))
-netG:add(nn.Tanh())
--- state size: (nc) x 64 x 64 --]]
+-- Calculate number of deconv layers given the output image size
+-- First and last layers are not included, as they have a different configuration
+local nConvLayers = math.log(opt.fineSize,2) - 3
+-- Filter multiplier used to decrement the # of filter for every deconv layer
+-- For every new layer the multiplier is divided by two.
+local fltMult = opt.fineSize / 8
 
 -- input is Z+Y, going into a convolution
-netG:add(SpatialFullConvolution(nz + ny, ngf * 4, 4, 4))
-netG:add(SpatialBatchNormalization(ngf * 4)):add(nn.ReLU(true))
--- state size: (ngf*8) x 4 x 4
--- Alternatively, you could perform a 5x5 convolution with 2 padding 
--- instead of a 4x4 convolution with 1 padding.
-netG:add(SpatialFullConvolution(ngf * 4, ngf * 2, 4, 4, 2, 2, 1, 1))
-netG:add(SpatialBatchNormalization(ngf * 2)):add(nn.ReLU(true))
--- state size: (ngf*4) x 8 x 8
-netG:add(SpatialFullConvolution(ngf * 2, ngf, 4, 4, 2, 2, 1, 1))
-netG:add(SpatialBatchNormalization(ngf)):add(nn.ReLU(true))
--- state size: (ngf*2) x 16 x 16
+netG:add(SpatialFullConvolution(nz + ny, ngf * fltMult, 4, 4))
+netG:add(SpatialBatchNormalization(ngf * fltMult)):add(nn.ReLU(true))
+
+for i=1,nConvLayers do
+   --- state size: (ngf * fltMult) x 2^(i+1) x 2^(i+1)
+    netG:add(SpatialFullConvolution(ngf * fltMult, ngf * fltMult/2, 4, 4, 2, 2, 1, 1))
+    netG:add(SpatialBatchNormalization(ngf * fltMult/2)):add(nn.ReLU(true))
+    fltMult = fltMult / 2
+end
+
+-- state size: ngf x opt.fineSize/2 x opt.fineSize/2
 netG:add(SpatialFullConvolution(ngf, nc, 4, 4, 2, 2, 1, 1))
 netG:add(nn.Tanh())
--- state size: (nc) x 32 x 32
+-- state size: nc x opt.fineSize x opt.fineSize
 
 netG:apply(weights_init)
 
