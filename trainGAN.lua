@@ -36,7 +36,7 @@ torch.manualSeed(opt.manualSeed)
 torch.setnumthreads(1)
 torch.setdefaulttensortype('torch.FloatTensor')
 assert(opt.fineSize >= 8, "Minimum fineSize is 8x8.")
-assert(opt.fineSize % 2 == 0, "fineSize must be multiple of 2.")
+assert(opt.fineSize == 8 or opt.fineSize == 16 or opt.fineSize == 32 or opt.fineSize == 64 or opt.fineSize == 128 or opt.fineSize == 256 or opt.fineSize == 512 or opt.fineSize == 1024, "fineSize must be a power of 2.")
 
 -- create data loader
 local DataLoader = paths.dofile('data/data.lua')
