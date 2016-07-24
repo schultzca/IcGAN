@@ -69,6 +69,8 @@ local SpatialBatchNormalization = nn.SpatialBatchNormalization
 local SpatialConvolution = nn.SpatialConvolution
 local SpatialFullConvolution = nn.SpatialFullConvolution
 
+-- --==GENERATOR==--
+
 local netG = nn.Sequential()
 -- Concatenate Z and Y
 --    Concatenate on first (non-batch) dimension, 
@@ -100,6 +102,8 @@ netG:add(nn.Tanh())
 
 netG:apply(weights_init)
 
+-- --==DISCRIMINATOR==--
+
 local netD = nn.Sequential()
 
 -- Need a parallel table to put different layers for X (conv layers) 
@@ -108,19 +112,33 @@ local pt = nn.ParallelTable()
 
 -- Convolutions applied only on X input
 local Xconv = nn.Sequential() 
--- input is (nc) x 64 x 64
+-- input is nc x opt.fineSize x opt.fineSize
 Xconv:add(SpatialConvolution(nc, ndf, 4, 4, 2, 2, 1, 1))
 Xconv:add(nn.LeakyReLU(0.2, true))
--- state size: (ndf) x 32 x 32
-Xconv:add(SpatialConvolution(ndf, ndf * 2, 4, 4, 2, 2, 1, 1))
-Xconv:add(SpatialBatchNormalization(ndf * 2)):add(nn.LeakyReLU(0.2, true))
+
+fltMult = 1
+
+if nConvLayers > 0 then -- if input images are greater than 8x8
+    -- state size: ndf x opt.fineSize/2 x opt.fineSize/2
+    fltMult = 2
+    Xconv:add(SpatialConvolution(ndf, ndf * fltMult, 4, 4, 2, 2, 1, 1))
+    Xconv:add(SpatialBatchNormalization(ndf * fltMult)):add(nn.LeakyReLU(0.2, true))
+end
 
 -- Replicate Y to match convolutional filter dimensions
 local Yrepl = nn.Sequential()
--- ny -> ny x 8 (replicate 2nd dimension)
-Yrepl:add(nn.Replicate(8,2,1)) -- 8-> MNIST (size 32x32), 16 -> celebA (size 64x64)
--- ny x 8 -> ny x 8 x 8 (replicate 3rd dimension)
-Yrepl:add(nn.Replicate(8,3,2))
+
+if nConvLayers == 0 then
+    -- ny -> ny x 4 (replicate 2nd dimension)
+    Yrepl:add(nn.Replicate(4,2,1)) -- 8-> MNIST (size 32x32), 16 -> celebA (size 64x64)
+    -- ny x 8 -> ny x 4 x 4 (replicate 3rd dimension)
+    Yrepl:add(nn.Replicate(4,3,2))
+else
+    -- ny -> ny x opt.fineSize/4 (replicate 2nd dimension)
+    Yrepl:add(nn.Replicate(opt.fineSize/4,2,1)) -- 8-> MNIST (size 32x32), 16 -> celebA (size 64x64)
+    -- ny x 8 -> ny x opt.fineSize/4 x opt.fineSize/4 (replicate 3rd dimension)
+    Yrepl:add(nn.Replicate(opt.fineSize/4,3,2))
+end
 
 -- Join X and Y
 pt:add(Xconv)
@@ -129,15 +147,20 @@ netD:add(pt)
 netD:add(nn.JoinTable(1,3))
 
 -- Convolutions applied on both X and Y
--- state size: (ndf*2 + ny) x 16 x 16
-netD:add(SpatialConvolution(ndf * 2 + ny, ndf * 4, 4, 4, 2, 2, 1, 1))
-netD:add(SpatialBatchNormalization(ndf * 4)):add(nn.LeakyReLU(0.2, true))
--- state size: (ndf*4) x 8 x 8
---netD:add(SpatialConvolution(ndf * 4, ndf * 8, 4, 4, 2, 2, 1, 1)) -- Comentar per MNIST
---netD:add(SpatialBatchNormalization(ndf * 8)):add(nn.LeakyReLU(0.2, true)) -- Comentar per MNIST
--- state size: (ndf*8) x 4 x 4
---netD:add(SpatialConvolution(ndf * 8, 1, 4, 4)) -- Comentar per MNIST
-netD:add(SpatialConvolution(ndf * 4, 1, 4, 4)) -- Descomentar per MNIST
+local inputFilters = ndf * fltMult + ny
+for i=2,nConvLayers do -- starts with 2 because one conv layer was already introduced before
+    -- state size: (ndf*fltMult + ny) x opt.fineSize/2^i x opt.fineSize2^i
+    
+    netD:add(SpatialConvolution(inputFilters, ndf * fltMult * 2, 4, 4, 2, 2, 1, 1))
+    netD:add(SpatialBatchNormalization(ndf * fltMult * 2)):add(nn.LeakyReLU(0.2, true))
+
+    fltMult = fltMult * 2
+    inputFilters =  ndf * fltMult
+end
+
+-- state size: (ndf*fltMult) x 4 x 4
+netD:add(SpatialConvolution(inputFilters, 1, 4, 4))
+
 netD:add(nn.Sigmoid())
 -- state size: 1 x 1 x 1
 netD:add(nn.View(1):setNumInputDims(nc))
