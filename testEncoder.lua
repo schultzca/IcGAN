@@ -17,7 +17,7 @@ local opt = {
 }
 torch.manualSeed(123)
 
-local imgExtension = '.png'
+local extensionList = {'jpg', 'png','JPG','PNG','JPEG', 'ppm', 'PPM', 'bmp', 'BMP'}
 
 if opt.gpu > 0 then
     require 'cunn'
@@ -25,8 +25,8 @@ if opt.gpu > 0 then
 end
 
 local ny -- Y label length. This depends on the dataset.
-if opt.dataset == 'mnist' then ny = 10; imgExtension = '.png'
-elseif opt.dataset == 'celebA' then ny = nil; imgExtension = '.jpg'; error('Not implemented.') end
+if opt.dataset == 'mnist' then ny = 10
+elseif opt.dataset == 'celebA' then ny = nil; error('Not implemented.') end
 
 -- Load nets
 local decG = torch.load(opt.decNet)
@@ -105,7 +105,13 @@ if opt.customInputImage > 0 then
         -- Load multiple images given a path
         assert(paths.dir(opt.customImagesPath)~=nil, "customImagesPath is not a directory")
         local i = 1
-        local fileIterator = paths.files(opt.customImagesPath, imgExtension)
+        local filter = function(filename) 
+                  for i=1, #extensionList do
+                      if filename:find(i) then return true end
+                  end
+                  return false
+              end
+        local fileIterator = paths.files(opt.customImagesPath, filter)
         while i <= opt.batchSize do
             local imPath = opt.customImagesPath .. '/' .. fileIterator()
             local im = image.load(imPath)
