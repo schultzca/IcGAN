@@ -69,7 +69,7 @@ function trainLoader:sample(quantity)
     local labelsReal = torch.zeros(quantity, ySize) -- real label
     local labelsFake = torch.zeros(quantity, ySize) -- mismatch label (taken pseudo-randomly)
     
-    -- Sampling with replacement (between batches we don't control which samples have been sampled)
+    -- Sampling with replacement. Between batches we don't control which samples have been sampled
     local randIdx = torch.randperm(trainSet.size):narrow(1,1,quantity)
     for i=1,quantity do
         -- Load and process image
