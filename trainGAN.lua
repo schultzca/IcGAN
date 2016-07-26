@@ -21,6 +21,7 @@ opt = {
    name = 'c_mnist',
    noise = 'normal',       -- uniform / normal
    dataRoot = 'mnist',
+   randomCrop = false,     -- true-> crop randomly the samples of the dataset (celebA only)
    -- Parameters for conditioned GAN
    trainWrongY = true   -- explicitly train discriminator with real images and wrong Y error
 }
