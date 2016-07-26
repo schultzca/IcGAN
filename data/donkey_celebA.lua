@@ -15,13 +15,11 @@ require 'io'
 ------------------------------------------
 -------- COMMON CACHES and PATHS
 -- Check for existence of opt.dataRoot'
-opt = {} -- Esborrar
-opt.dataRoot = 'celebA/img_align_celeba' -- Esborrar
 if not paths.dirp(opt.dataRoot) then
     error('Did not find directory: ' .. opt.dataRoot)
 end
 
-trainloader = {}
+trainLoader = {}
 
 -- Load all image paths on opt.dataRoot folder
 local imPaths = {}
