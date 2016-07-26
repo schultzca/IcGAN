@@ -60,15 +60,29 @@ local ySize = #labelHeader
 
 -- Read the rest of the file
 local i = 1
+local skippedImages = 0 -- Controls if some images are missing
 for line in file:lines() do  
   local l = line:split('%s+')
-  for key, val in ipairs(l) do
-      if key ~= 1 then -- first element is image path
-          imLabels[{{i},{key-1}}] = tonumber(val)
+  -- Check if image in labels file exists on imPaths
+  -- If not, skip it from imLabels
+  local imName = imPaths[i-skippedImages]:split('/')
+  imName = imName[#imName]
+  if imName == l[1] then
+      local j = 2
+      while j <= #l do
+          local val = l[j]
+          imLabels[{{i-skippedImages},{j-1}}] = tonumber(val)
+          j = j + 1
       end
+  else
+      print("Warning: "..l[1].." appears on labels file but hasn't been found in "..opt.dataRoot)
+      skippedImages = skippedImages + 1
   end
   i = i + 1
 end
+
+-- Narrow imLabels tensor in case some images are missing
+if skippedImages > 0 then imLabels = imLabels:narrow(1,1,imLabels:size(1)-skippedImages) end
 
 file:close()
 
