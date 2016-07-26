@@ -168,3 +168,36 @@ function trainLoader:sample(quantity)
     
     return samples, labelsReal, labelsFake
 end
+
+function trainLoader:sampleY(quantity)
+    local y = torch.zeros(quantity, ySize)
+    local splitIdx = math.ceil(quantity/2)--math.round(quantity*percentage)
+    
+    -- Get real labels
+    local yReal = y:narrow(1, 1, splitIdx)
+    local randIdx = torch.randperm(#imPaths):narrow(1,1,splitIdx)
+    for i=1,yReal:size(1) do
+        yReal[{{i},{}}] = imLabels[{{randIdx[i]},{}}]
+    end
+    
+    -- Select randomly pairs of labels to interpolate
+    local yInterp = y:narrow(1, splitIdx+1, quantity-splitIdx)
+    -- Si vols poder variar l'split fes la interpolació agafant els vectors de imLabels, no de yReal 
+    --(canvia splitIdx per #imPaths i yReal per imLabels)
+    local a = yReal:index(1,torch.randperm(splitIdx):long())
+    local b = yReal:index(1,torch.randperm(splitIdx):long())
+    -- Interpolate: yInterp = ((a+b)/2)*alpha
+    local alpha = torch.Tensor(yInterp:size(1), yInterp:size(2)):uniform(-1,1)
+    yInterp:copy(torch.cmul((a+b)/2,alpha))
+
+    collectgarbage()
+    return y
+end
+
+function trainLoader:size()
+    return #imPaths
+end
+
+function trainLoader:ySize()
+    return ySize
+end
