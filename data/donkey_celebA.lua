@@ -9,7 +9,6 @@
 
 require 'image'
 require 'io'
-paths.dofile('dataset.lua')
 
 -- This file contains the data-loading logic and details.
 -- It is run by each data-loader thread.
@@ -142,6 +141,7 @@ end
 -- trainLoader
 function trainLoader:sample(quantity)
     assert(quantity)
+    assert(quantity*2<=#imPaths, ("Batch size can't be greater than %d"):format(#imPaths/2))
     local samples = torch.Tensor(quantity, sampleSize[1], sampleSize[2], sampleSize[2]) -- real images
     local labelsReal = torch.zeros(quantity, ySize) -- real label
     local labelsFake = torch.zeros(quantity, ySize) -- mismatch label (taken pseudo-randomly)
@@ -153,14 +153,14 @@ function trainLoader:sample(quantity)
         samples[{{i},{},{},{}}] = trainHook(imPaths[randIdx[i]])
         
         -- Compute real label
-        labelsReal[{{i},{}}]  = imLabels[randIdx[i]]
+        labelsReal[{{i},{}}]  = imLabels[{{randIdx[i]},{}}]
         
         -- Compute randomly fake class. It can be any classe except the real one.
-        labelsFake[{{i},{}}] = imLabels[randIdx[quantity+i]]
+        labelsFake[{{i},{}}] = imLabels[{{randIdx[quantity+i]},{}}]
         if torch.all(labelsReal[{{i},{}}]:eq(labelsFake[{{i},{}}])) then 
         -- If labelsFake happen to be equal to labelsReals, 
         -- alter randomly some of labelsFake positions (-1 to 1 or 1 to -1)
-            local randPosition = torch.randperm(ySize):narrow(1,1,1)[1]
+            local randPosition = math.random(ySize)
             labelsFake[{{i},{randPosition}}] = -labelsFake[{{i},{randPosition}}]
         end
     end
