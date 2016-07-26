@@ -1,6 +1,7 @@
 # Folders that contain data
 mnist/images
 celebA
+lfw
 checkpoints
 cache
 images
