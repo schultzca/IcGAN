@@ -8,7 +8,6 @@
 ]]--
 
 require 'image'
-paths.dofile('dataset.lua')
 
 -- This file contains the data-loading logic and details.
 -- It is run by each data-loader thread.
