@@ -23,6 +23,8 @@ function data.new(n, dataset_name, opt_)
        if n > 6 then n = 6 end -- lmdb complains beyond 6 donkeys. wtf.
    elseif dataset_name == 'mnist' then
        donkey_file = 'donkey_mnist.lua'
+   elseif string.lower(dataset_name) == 'celeba' then
+       donkey_file = 'donkey_celebA.lua'
    else
       error('Unknown dataset: ' .. dataset_name)
    end
