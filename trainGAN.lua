@@ -210,9 +210,20 @@ local parametersG, gradParametersG = netG:getParameters()
 if opt.display then disp = require 'display' end
 
 local noise_vis = Z:clone()
--- PROVISIONAL --
-for i=1,opt.batchSize do
-  Y_vis[{{i},{((i-1)%ny)+1}}] = 1
+
+if string.lower(opt.dataset) == 'mnist' then
+    for i=1,opt.batchSize do
+      Y_vis[{{i},{((i-1)%ny)+1}}] = 1
+    end
+elseif string.lower(opt.dataset) == 'celeba' then
+    Y_vis:fill(-1)
+    for i=1,opt.batchSize do
+      Y_vis[{{i},{((i-1)%ny)+1}}] = 1
+    end
+else
+    print("Warning: visualization for this dataset not implemented.")
+    print("Conditional vector Y for visualizating samples will be set to 0.")
+    Y_vis:zero()
 end
 
 if opt.noise == 'uniform' then
@@ -349,7 +360,7 @@ for epoch = 1, opt.niter do
       if counter % 10 == 0 and opt.display then
           local fake = netG:forward{noise_vis, Y_vis}
           local real = data:getBatch()
-          disp.image(image.toDisplayTensor(fake,0,10), {win=opt.display_id, title=opt.name .. '. Generated images'})
+          disp.image(image.toDisplayTensor(fake,0,ny), {win=opt.display_id, title=opt.name .. '. Generated images'})
           disp.image(real, {win=opt.display_id*3, title=opt.name .. '. Real images'})
           -- display generator and discriminator error
           table.insert(errorData,
