@@ -22,21 +22,10 @@ end
 trainLoader = {}
 
 -- Load all image paths on opt.dataRoot folder
-local imPaths = {}
-local extensionList = {'jpg', 'png','JPG','PNG','JPEG', 'ppm', 'PPM', 'bmp', 'BMP'}
-local function filter(filename) 
-    -- Filter all files with no image extension
-    for i=1, #extensionList do
-        if filename:find(i) then return true end
-    end
-    return false
-end
-local fileIterator = io.popen("ls "..opt.dataRoot)
-for filename in fileIterator:lines() do
-    if filter(filename) then
-        imPaths[#imPaths+1] = opt.dataRoot.. '/' .. filename
-    end
-end
+local imPaths = torch.load(opt.dataRoot..'/imNames2.dmp')
+print('Loading images from '..opt.dataRoot..'/images.dmp')
+local images = torch.load(opt.dataRoot..'/images.dmp')
+print(('Done. Loaded %.2f GB.'):format((4*images:size(1)*images:size(2)*images:size(3)*images:size(4))/2^30))
 
 -- Load each label vector for each image
 local imLabels
@@ -62,8 +51,7 @@ for line in file:lines() do
   local l = line:split('%s+')
   -- Check if image in labels file exists on imPaths
   -- If not, skip it from imLabels
-  local imName = imPaths[i-skippedImages]:split('/')
-  imName = imName[#imName]
+  local imName = imPaths[i-skippedImages]
   if imName == l[1] then
       local j = 2
       while j <= #l do
@@ -87,8 +75,7 @@ file:close()
 local loadSize   = {3, opt.loadSize}
 local sampleSize = {3, opt.fineSize}
 
-local function loadImage(path)
-   local input = image.load(path, 3, 'float')
+local function loadImage(input)
    -- find the smaller dimension, and resize it to loadSize[2] (while keeping aspect ratio)
    local iW = input:size(3)
    local iH = input:size(2)
@@ -106,9 +93,9 @@ local mean,std
 -- Hooks that are used for each image that is loaded
 
 -- function to load the image, jitter it appropriately (random crops etc.)
-local trainHook = function(path)
-   collectgarbage()
-   local input = loadImage(path)
+local trainHook = function(input)
+   --collectgarbage()
+   local input = loadImage(input)
    local iW = input:size(3)
    local iH = input:size(2)
 
@@ -148,7 +135,7 @@ function trainLoader:sample(quantity)
     local randIdx = torch.randperm(#imPaths):narrow(1,1,quantity*2)
     for i=1,quantity do
         -- Load and process image
-        samples[{{i},{},{},{}}] = trainHook(imPaths[randIdx[i]])
+        samples[{{i},{},{},{}}] = trainHook(images[randIdx[i]])
         
         -- Compute real label
         labelsReal[{{i},{}}]  = imLabels[{{randIdx[i]},{}}]
