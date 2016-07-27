@@ -19,7 +19,7 @@ local opt = {
 for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
 print(opt)
 if opt.display == 0 then opt.display = false end
-
+--torch.manualSeed(1)
 assert(net ~= '', 'provide a generator model')
 
 if opt.gpu > 0 then
@@ -29,7 +29,8 @@ end
 
 local ny -- Y label length. This depends on the dataset.
 if opt.dataset == 'mnist' then ny = 10 
-elseif opt.dataset == 'celebA' then ny = nil error('Not implemented.') end
+elseif opt.dataset == 'celebA' then ny = 40 
+else error('Not implemented.') end
 
 assert(opt.batchSize >= ny, ('opt.batchSize must be equal or greater than %d (ny).'):format(ny))
 
@@ -48,6 +49,11 @@ if opt.dataset == 'mnist' then
       Y[{{i},{((i-1)%ny)+1}}] = 1
     end
 elseif opt.dataset == 'celebA' then
+    Y:fill(-1)
+    for i=1,opt.batchSize do
+        Y[{{i},{((i-1)%ny)+1}}] = 1
+    end
+else  
     error('Not implemented.')
 end
 
