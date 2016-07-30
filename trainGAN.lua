@@ -30,10 +30,16 @@ opt = {
 for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
 print(opt)
 if opt.display == 0 then opt.display = false end
-
-opt.manualSeed = torch.random(1, 10000) -- fix seed
+if opt.gpu > 0 then
+  require 'cunn'
+  require 'cudnn'
+end
+opt.manualSeed = 5000--torch.random(1, 10000) -- fix seed
 print("Random Seed: " .. opt.manualSeed)
 torch.manualSeed(opt.manualSeed)
+if opt.gpu > 0 then
+    cutorch.manualSeed(opt.manualSeed)
+end
 torch.setnumthreads(1)
 torch.setdefaulttensortype('torch.FloatTensor')
 assert(opt.fineSize >= 8, "Minimum fineSize is 8x8.")
@@ -191,12 +197,10 @@ local tm = torch.Timer()
 local data_tm = torch.Timer()
 ----------------------------------------------------------------------------
 if opt.gpu > 0 then
-   require 'cunn'
    cutorch.setDevice(opt.gpu)
    X = X:cuda();  Z = Z:cuda(); Y = Y:cuda(); Y_vis = Y_vis:cuda(); label = label:cuda()
 
    if pcall(require, 'cudnn') then
-      require 'cudnn'
       cudnn.benchmark = true
       cudnn.convert(netG, cudnn)
       cudnn.convert(netD, cudnn)
