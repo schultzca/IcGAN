@@ -86,6 +86,9 @@ if skippedImages > 0 then imLabels = imLabels:narrow(1,1,imLabels:size(1)-skippe
 
 file:close()
 
+-- Calculate probabilities from each attribute
+local attrProb = torch.sum(imLabels:clone():add(1):div(2), 1):float():div(imLabels:size(1))
+attrProb:resize(attrProb:size(2))
 --------------------------------------------------------------------------------------------
 local loadSize   = {3, opt.loadSize}
 local sampleSize = {3, opt.fineSize}
@@ -180,6 +183,18 @@ function trainLoader:sampleY(quantity)
         yReal[{{i},{}}] = imLabels[{{randIdx[i]},{}}]
     end
     
+    -- Sample randomly according to the attributes distribution
+    -- Independence among attributes assumed
+    --[[local ySampled = y:narrow(1, splitIdx+1, quantity-splitIdx)
+    ySampled:fill(-1)
+    for i=1,ySampled:size(1) do
+        for j=1,ySampled:size(2) do
+            local prob = torch.Tensor{attrProb[j], 1-attrProb[j]}
+            if torch.multinomial(prob,1)[1] == 1 then
+                ySampled[{{i},{j}}] = 1
+            end
+        end
+    end]]--
     -- Select randomly pairs of labels to interpolate
     --[[local yInterp = y:narrow(1, splitIdx+1, quantity-splitIdx)
     -- Si vols poder variar l'split fes la interpolació agafant els vectors de imLabels, no de yReal 
