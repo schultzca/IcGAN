@@ -20,9 +20,10 @@ if not paths.dirp(opt.dataRoot) then
 end
 
 trainLoader = {}
-
+-- Index of the attributes from celebA that will be ignored
+local attrFil = {1,2,3,4,7,8,11,14,15,20,24,26,28,30,31,35,37,38,39}
 -- Load all image paths on opt.dataRoot folder
-local imPaths = torch.load(opt.dataRoot..'/imNames2.dmp')
+local imPaths = torch.load(opt.dataRoot..'/imNames.dmp')
 print('Loading images from '..opt.dataRoot..'/images.dmp')
 local images = torch.load(opt.dataRoot..'/images.dmp')
 print(('Done. Loaded %.2f GB.'):format((4*images:size(1)*images:size(2)*images:size(3)*images:size(4))/2^30))
@@ -36,8 +37,15 @@ file:read() -- Skip 1st line
 local rawLabelHeader = file:read() -- 2nd line is header
 local labelHeader = {}
 -- Read header
+local i = 1
+local j = 1
 for label in rawLabelHeader:gmatch('%S+') do -- split on space
-    labelHeader[#labelHeader+1] = label
+    if i ~= attrFil[j] then
+        labelHeader[#labelHeader+1] = label
+    else
+        j = j + 1
+    end
+    i = i + 1
 end
 
 imLabels = torch.IntTensor(#imPaths, #labelHeader)
@@ -53,10 +61,17 @@ for line in file:lines() do
   -- If not, skip it from imLabels
   local imName = imPaths[i-skippedImages]
   if imName == l[1] then
-      local j = 2
-      while j <= #l do
-          local val = l[j]
-          imLabels[{{i-skippedImages},{j-1}}] = tonumber(val)
+      local j = 2 -- indexs line l. First element of line is imName, we skip it
+      local k = 1 -- index attrFil. Just increments when an filtered attribute is found
+      local k2 = 1 -- indexs imLabels with filtered labels
+      while k2 <= #labelHeader do
+          if j-1 ~= attrFil[k] then
+              local val = l[j]
+              imLabels[{{i-skippedImages},{k2}}] = tonumber(val)
+              k2 = k2 + 1
+          else
+              k = k + 1
+          end
           j = j + 1
       end
   else
