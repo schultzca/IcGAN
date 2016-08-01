@@ -3,14 +3,14 @@ require 'nn'
 require 'optim'
 
 opt = {
-   dataset = 'mnist',       -- imagenet / lsun / folder
+   dataset = 'celebA',       -- imagenet / lsun / folder
    batchSize = 64,
-   loadSize = 32, -- 96,
-   fineSize = 32, -- 64,
+   loadSize = 64, -- 96,
+   fineSize = 64, -- 64,
    nz = 100,               -- #  of dim for Z
    ngf = 64,               -- #  of gen filters in last deconv layer
    ndf = 64,               -- #  of discrim filters in first conv layer
-   nThreads = 4,           -- #  of data loading threads to use
+   nThreads = 1,           -- #  of data loading threads to use
    niter = 25,             -- #  of iter at starting learning rate
    lr = 0.0002,            -- initial learning rate for adam
    beta1 = 0.5,            -- momentum term of adam
@@ -18,12 +18,12 @@ opt = {
    display = 1,            -- display samples while training. 0 = false
    display_id = 10,        -- display window id.
    gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
-   name = 'c_mnist',
+   name = 'c_celebA',
    noise = 'normal',       -- uniform / normal
-   dataRoot = 'mnist',
+   dataRoot = 'celebA',     -- path to the dataset images, if not mnist. If mnist, just put 'mnist'
    randomCrop = false,     -- true-> crop randomly the samples of the dataset (celebA only)
    -- Parameters for conditioned GAN
-   trainWrongY = true   -- explicitly train discriminator with real images and wrong Y error
+   trainWrongY = true   -- explicitly train discriminator with real images and wrong Y
 }
 
 -- one-line argument parser. parses enviroment variables to override the defaults
