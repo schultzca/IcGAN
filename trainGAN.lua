@@ -125,27 +125,14 @@ Xconv:add(nn.LeakyReLU(0.2, true))
 
 fltMult = 1
 
-if nConvLayers > 0 then -- if input images are greater than 8x8
-    -- state size: ndf x opt.fineSize/2 x opt.fineSize/2
-    fltMult = 2
-    Xconv:add(SpatialConvolution(ndf, ndf * fltMult, 4, 4, 2, 2, 1, 1))
-    Xconv:add(SpatialBatchNormalization(ndf * fltMult)):add(nn.LeakyReLU(0.2, true))
-end
-
 -- Replicate Y to match convolutional filter dimensions
 local Yrepl = nn.Sequential()
 
-if nConvLayers == 0 then
-    -- ny -> ny x 4 (replicate 2nd dimension)
-    Yrepl:add(nn.Replicate(4,2,1)) -- 8-> MNIST (size 32x32), 16 -> celebA (size 64x64)
-    -- ny x 8 -> ny x 4 x 4 (replicate 3rd dimension)
-    Yrepl:add(nn.Replicate(4,3,2))
-else
-    -- ny -> ny x opt.fineSize/4 (replicate 2nd dimension)
-    Yrepl:add(nn.Replicate(opt.fineSize/4,2,1)) -- 8-> MNIST (size 32x32), 16 -> celebA (size 64x64)
-    -- ny x 8 -> ny x opt.fineSize/4 x opt.fineSize/4 (replicate 3rd dimension)
-    Yrepl:add(nn.Replicate(opt.fineSize/4,3,2))
-end
+-- ny -> ny x opt.fineSize/2 (replicate 2nd dimension)
+Yrepl:add(nn.Replicate(opt.fineSize/2,2,1))
+-- ny x 8 -> ny x opt.fineSize/2 x opt.fineSize/2 (replicate 3rd dimension)
+Yrepl:add(nn.Replicate(opt.fineSize/2,3,2))
+
 
 -- Join X and Y
 pt:add(Xconv)
@@ -155,9 +142,8 @@ netD:add(nn.JoinTable(1,3))
 
 -- Convolutions applied on both X and Y
 local inputFilters = ndf * fltMult + ny
-for i=2,nConvLayers do -- starts with 2 because one conv layer was already introduced before
-    -- state size: (ndf*fltMult + ny) x opt.fineSize/2^i x opt.fineSize2^i
-    
+for i=1,nConvLayers do
+    -- state size: (ndf*fltMult + ny) x opt.fineSize/2^i x opt.fineSize/2^i
     netD:add(SpatialConvolution(inputFilters, ndf * fltMult * 2, 4, 4, 2, 2, 1, 1))
     netD:add(SpatialBatchNormalization(ndf * fltMult * 2)):add(nn.LeakyReLU(0.2, true))
 
