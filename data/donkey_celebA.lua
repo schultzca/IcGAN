@@ -174,36 +174,12 @@ end
 
 function trainLoader:sampleY(quantity)
     local y = torch.zeros(quantity, ySize)
-    local splitIdx = math.ceil(quantity/2)--math.round(quantity*percentage)
-    splitIdx = quantity -- esborrar
-    -- Get real labels
-    local yReal = y:narrow(1, 1, splitIdx)
-    local randIdx = torch.randperm(#imPaths):narrow(1,1,splitIdx)
-    for i=1,yReal:size(1) do
-        yReal[{{i},{}}] = imLabels[{{randIdx[i]},{}}]
-    end
     
-    -- Sample randomly according to the attributes distribution
-    -- Independence among attributes assumed
-    --[[local ySampled = y:narrow(1, splitIdx+1, quantity-splitIdx)
-    ySampled:fill(-1)
-    for i=1,ySampled:size(1) do
-        for j=1,ySampled:size(2) do
-            local prob = torch.Tensor{attrProb[j], 1-attrProb[j]}
-            if torch.multinomial(prob,1)[1] == 1 then
-                ySampled[{{i},{j}}] = 1
-            end
-        end
-    end]]--
-    -- Select randomly pairs of labels to interpolate
-    --[[local yInterp = y:narrow(1, splitIdx+1, quantity-splitIdx)
-    -- Si vols poder variar l'split fes la interpolació agafant els vectors de imLabels, no de yReal 
-    --(canvia splitIdx per #imPaths i yReal per imLabels)
-    local a = yReal:index(1,torch.randperm(splitIdx):long())
-    local b = yReal:index(1,torch.randperm(splitIdx):long())
-    -- Interpolate: yInterp = ((a+b)/2)*alpha
-    local alpha = torch.Tensor(yInterp:size(1), yInterp:size(2)):uniform(-1,1)
-    yInterp:copy(torch.cmul((a+b)/2,alpha))]]--
+    -- Get real labels
+    local randIdx = torch.randperm(#imPaths):narrow(1,1,quantity)
+    for i=1,quantity do
+        y[{{i},{}}] = imLabels[{{randIdx[i]},{}}]
+    end
 
     collectgarbage()
     return y
