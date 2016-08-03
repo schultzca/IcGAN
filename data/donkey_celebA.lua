@@ -177,10 +177,8 @@ function trainLoader:sampleY(quantity)
     
     -- Get real labels
     local randIdx = torch.randperm(#imPaths):narrow(1,1,quantity)
-    for i=1,quantity do
-        y[{{i},{}}] = imLabels[{{randIdx[i]},{}}]
-    end
-
+    y = imLabels:index(1, randIdx:long())
+    
     collectgarbage()
     return y
 end
