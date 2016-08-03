@@ -7,6 +7,7 @@
 require 'image'
 require 'nn'
 require "lfs"
+require "io"
 local optnet = require 'optnet'
 torch.setdefaulttensortype('torch.FloatTensor')
 --torch.manualSeed(123) -- This only works if gpu == 0
@@ -20,11 +21,11 @@ local function getParameters()
     imsize = 1,            -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px,
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,              -- size of noise vector
-    outputFolder = 'mnist/generatedDataset/', -- path where the dataset will be stored
+    outputFolder = 'celebA/c_generatedDataset/', -- path where the dataset will be stored
     outputFormat = 'binary', -- (binary | ascii) binary is faster, but platform-dependent.
     storeAsTensor = true,    -- true -> store images as tensor, false -> store images as images (lossy)
     -- Conditional GAN parameters
-    dataset = 'mnist',
+    dataset = 'celebA',     -- mnist | celebA  
   }
   
   for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
@@ -63,10 +64,66 @@ local function stabilizeBN(net, input, noiseType)
   end
 end
 
+local function readCelebaLabels(labelPath, nSamples)
+    -- Index of the attributes from celebA that will be ignored
+    local attrFil = {1,2,3,4,7,8,11,14,15,20,24,25,26,28,30,31,35,37,38,39,40}
+    local celebaSize = 202599 
+    local file = io.open(labelPath, 'r')
+    
+    file:read() -- Skip 1st line
+    local rawLabelHeader = file:read() -- 2nd line is header
+    local labelHeader = {}
+    -- Read header
+    local i = 1
+    local j = 1
+    for label in rawLabelHeader:gmatch('%S+') do -- split on space
+        if i ~= attrFil[j] then
+            labelHeader[#labelHeader+1] = label
+        else
+            j = j + 1
+        end
+        i = i + 1
+    end
+    
+    local imLabels = torch.IntTensor(celebaSize, #labelHeader)
+    
+    local ySize = #labelHeader
+    
+    -- Read the rest of the file
+    local i = 1
+    local skippedImages = 0 -- Controls if some images are missing
+    for line in file:lines() do  
+      local l = line:split('%s+')
+      -- Check if image in labels file exists on imPaths
+      -- If not, skip it from imLabels
+      local j = 2 -- indexs line l. First element of line is imName, we skip it
+      local k = 1 -- index attrFil. Just increments when an filtered attribute is found
+      local k2 = 1 -- indexs imLabels with filtered labels
+      while k2 <= #labelHeader do
+          if j-1 ~= attrFil[k] then
+              local val = l[j]
+              imLabels[{{i-skippedImages},{k2}}] = tonumber(val)
+              k2 = k2 + 1
+          else
+              k = k + 1
+          end
+          j = j + 1
+      end
+      i = i + 1
+    end
+    
+    local y = torch.Tensor(nSamples, ySize)
+    
+    local randIdx = torch.randperm(celebaSize):narrow(1,1,nSamples)
+    y = imLabels:index(1, randIdx:long())
+    
+    return y
+end
+
 local function initializeNet(net, opt)
   -- Initializes the net and the input noise.
   -- This involves passing the network to GPU and other optimizations.
-  
+  local imLabels
   local Z = torch.Tensor(opt.batchSize, opt.nz, opt.imsize, opt.imsize)
 
   local Y
@@ -77,7 +134,10 @@ local function initializeNet(net, opt)
         Y[{{i},{((i-1)%opt.ny)+1}}] = 1 -- Y specific to MNIST dataset
       end
   elseif opt.dataset == 'celebA' then
-      error('Not implemented.')
+      --Read label dataset and pick randomly n Y vectors
+      imLabels = readCelebaLabels(opt.dataset..'/list_attr_celeba.txt', opt.samples)
+      opt.ny = imLabels:size(2)
+      Y = torch.zeros(opt.batchSize, opt.ny)
   end
   
   if opt.gpu > 0 then
@@ -96,7 +156,7 @@ local function initializeNet(net, opt)
       -- the refreshed BN is saved, net.__BNrefreshed will indicate whether
       -- its BN has been refreshed or not.
       print('Refreshing BN...')
-      stabilizeBN(net,{Z,Y},'normal')
+      stabilizeBN(net,{Z,Y:narrow(1,1,Z:size(1))},'normal')
       torch.save(opt.net, net)
   end
     
@@ -104,7 +164,7 @@ local function initializeNet(net, opt)
   -- do not change its parameters on test time.
   net:evaluate()
   
-  return net, Z, Y
+  return net, Z, Y, imLabels
 end
 
 local function createFolder(path)
@@ -210,9 +270,10 @@ function main()
   
   -- Load generative network
   local net = torch.load(opt.net)
+  local imLabels -- only used in celebA
   local Z, Y
   
-  net, Z, Y = initializeNet(net, opt)
+  net, Z, Y, imLabels = initializeNet(net, opt)
   
   -- Create output folder path and other subfolders
   createFolder(opt.outputFolder)
@@ -239,6 +300,18 @@ function main()
           Z:normal(0, 1)
       end
       
+      -- Y sampling is needed for celebA, as unlike MNIST, there are many possible combinations
+      if opt.dataset == 'celebA' then
+          local modIdx = ((i-1)%imLabels:size(1))+1
+          local endIdx = modIdx+opt.batchSize-1
+          if endIdx > imLabels:size(1) then
+              -- Fill the rest of Y
+              Y:copy(torch.cat(imLabels[{{modIdx,imLabels:size(1)},{}}], imLabels[{{1,endIdx%imLabels:size(1)},{}}],1))
+          else
+              Y:copy(imLabels[{{modIdx,endIdx},{}}])
+          end
+      end
+
       -- Generate images (number specified by opt.batchSize)
       imageSet = net:forward{Z,Y}
       
