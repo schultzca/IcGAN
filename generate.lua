@@ -49,7 +49,7 @@ for i=1,opt.batchSize do
 end
 
 local net = torch.load(opt.net)
-
+net:evaluate()
 if opt.noisetype == 'uniform' then
   -- Fix Z for every row in generated samples.
   -- A row has ny samples. Every i to (i-1)+ny samples
