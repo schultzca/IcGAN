@@ -365,6 +365,7 @@ function main()
             
       -- Store network
       torch.save(opt.outputPath .. opt.name .. '_' .. epoch .. 'epochs.t7', encoder)
+      torch.save('checkpoints/' .. opt.name .. '_error.t7', errorData)
   end
   
 end
