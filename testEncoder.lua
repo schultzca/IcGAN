@@ -6,14 +6,15 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 local opt = {
     batchSize = 64,         -- number of samples to produce
-    decNet = 'checkpoints/c_mnist_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
-    encNet = 'checkpoints/encoder_c_mnist_6epochs.t7',--'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
+    decNet = 'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',--'checkpoints/c_mnist_25_net_G.t7' 'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
+    encNet = 'checkpoints/encoder_c_celeba_Yconv1_noTanh_20epochs.t7',--'checkpoints/encoder_c_mnist_6epochs.t7' 'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,
     customInputImage = 2,  -- 0 = no custom, only generated images used, 1 = load input image, 2 = load multiple input images
-    customImagesPath = 'mnist/imagesTest/', --'mnist/images', -- path used wehn customInputImage is 1 (path to single image) or 2 (path to folder with images)
+    customImagesPath = 'celebA/img_align_celeba/', --'mnist/images', -- path used when customInputImage is 1 (path to single image) or 2 (path to folder with images)
     -- Conditional GAN parameters
-    dataset = 'mnist',
+    dataset = 'celebA',
+    threshold = true, -- threshold Y vectors to binary or not
 }
 torch.manualSeed(123)
 
@@ -26,7 +27,7 @@ end
 
 local ny -- Y label length. This depends on the dataset.
 if opt.dataset == 'mnist' then ny = 10
-elseif opt.dataset == 'celebA' then ny = nil; error('Not implemented.') end
+elseif opt.dataset == 'celebA' then ny = 19 end
 
 -- Load nets
 local decG = torch.load(opt.decNet)
@@ -129,17 +130,31 @@ end
 
 outZ:resize(outZ:size(1), outZ:size(2), 1, 1)
 
---[[if opt.dataset == 'mnist' then
+-- (Optional) Threshold Y
+if opt.threshold then
+  if string.lower(opt.dataset) == 'mnist' then
     -- Convert to one-hot vector
-    local tmp = torch.zeros(1,ny)
-    for i=1,outY:size(1) do
-        tmp:zero()
-        local _, maxIdx = torch.max(outY[{{i},{}}],2)
-        tmp[{{},{maxIdx[1][1]}}] = 1
-        outY[{{i},{}}] = tmp:clone()
-    end
-end--]]
-
+      local tmp = torch.zeros(1,ny)
+      for i=1,outY:size(1) do
+          tmp:zero()
+          local _, maxIdx = torch.max(outY[{{i},{}}],2)
+          tmp[{{},{maxIdx[1][1]}}] = 1
+          outY[{{i},{}}] = tmp:clone()
+      end
+  else
+      -- celebA
+      for i=1,outY:size(1) do
+          for j=1,outY:size(2) do
+              local val = outY[{{i},{j}}][1][1]
+              if val > 0 then
+                  outY[{{i},{j}}] = 1
+              else
+                  outY[{{i},{j}}] = -1
+              end
+          end
+      end
+  end
+end
 -- Decode it to an output image X2
 local outX = decG:forward{outZ, outY}
 
