@@ -14,10 +14,10 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 local function getParameters()
   local opt = {
-    samples = 10000,          -- total number of samples to generate
+    samples = 202599,          -- total number of samples to generate
     batchSize = 256,         -- number of samples to produce at the same time
     noisetype = 'normal',  -- type of noise distribution (uniform / normal).
-    net = 'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
+    net = 'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',-- path to the generator network
     imsize = 1,            -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px,
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,              -- size of noise vector

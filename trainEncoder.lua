@@ -8,14 +8,14 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 local function getParameters()
   local opt = {
-        name = 'encoder',
+        name = 'encoder_c_celeba_Yconv1',
         batchSize = 64,
         outputPath= 'checkpoints/',        -- path used to store the encoder network
-        datasetPath = 'mnist/generatedDataset/', -- folder where the dataset is stored (not the file itself)
+        datasetPath = 'celebA/c_generatedDataset/', -- folder where the dataset is stored (not the file itself)
         split = 0.66,           -- split between train and test (i.e 0.66 -> 66% train, 33% test)
-        nConvLayers = 3,        -- # of convolutional layers on the net
-        nf = 128, --512 for AAE -- #  of filters in hidden layer
-        nEpochs = 6,            -- #  of epochs
+        nConvLayers = 4,--4,--3 MNIST,        -- # of convolutional layers on the net
+        nf = 32,--64,--128 MNIST, --512 for AAE -- #  of filters in hidden layer
+        nEpochs = 20,            -- #  of epochs
         lr = 0.0001,            -- initial learning rate for adam
         beta1 = 0.1,            -- momentum term of adam
         display = 1,            -- display 1= train and test error, 2 = error + batches images, 0 = false

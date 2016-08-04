@@ -4,17 +4,17 @@ local optnet = require 'optnet'
 torch.setdefaulttensortype('torch.FloatTensor')
 
 local opt = {
-    batchSize = 100,        -- number of samples to produce (it should be multiple of ny)
+    batchSize = 1000,        -- number of samples to produce (it should be multiple of ny)
     noisetype = 'normal',  -- type of noise distribution (uniform / normal).
-    net = '',              -- path to the generator network
+    net = 'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',              -- path to the generator network
     imsize = 1,            -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px, ...
     noisemode = 'random',  -- random / line / linefull1d / linefull
-    name = 'generation1',  -- name of the file saved
+    name = 'celebA_analogies',  -- name of the file saved
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     display = 1,           -- Display image: 0 = false, 1 = true
     nz = 100,              
     -- Conditioned GAN parameters
-    dataset = 'mnist'     -- mnist | celebA           
+    dataset = 'celebA'     -- mnist | celebA           
 }
 for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
 print(opt)
