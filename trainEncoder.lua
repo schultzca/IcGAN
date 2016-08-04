@@ -177,9 +177,8 @@ local function getEncoderVAE_GAN(sample, nFiltersBase, Zsz, Ysz, nConvLayers)
         ctModule:add(nn.ReLU(true))
         local outputSize
         if i==1 then outputSize = Zsz else outputSize = Ysz end
-        ctModule:add(nn.Linear(inputFilterFC, outputSize)) 
-        --ct:add(nn.BatchNormalization(outputSize))
-        --ct:add(nn.ReLU(true))
+        ctModule:add(nn.Linear(inputFilterFC, outputSize))
+        --ctModule:add(nn.Tanh()) 
         
         ct:add(ctModule)
     end
