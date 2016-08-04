@@ -18,7 +18,7 @@ opt = {
    display = 1,            -- display samples while training. 0 = false
    display_id = 10,        -- display window id.
    gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
-   name = 'c_celebA',
+   name = 'c_celebA_64_filt_Yconv1',
    noise = 'normal',       -- uniform / normal
    dataRoot = 'celebA',     -- path to the dataset images, if not mnist. If mnist, just put 'mnist'
    randomCrop = false,     -- true-> crop randomly the samples of the dataset (celebA only)
@@ -225,8 +225,8 @@ local fDx = function(x)
 
    -- Train with real images X and correct conditioning vectors Y
    local output = netD:forward{X, Y}
-   local errD_real = torch.sum(output:lt(0.5))/output:size(1)
-   criterion:forward(output, label)
+   --local errD_real = torch.sum(output:lt(0.5))/output:size(1)
+   errD_real = criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
    if opt.trainWrongY then 
         df_do:mul(0.5) -- Real image error is shared equally between real Y and wrong Y 
@@ -260,8 +260,8 @@ local fDx = function(x)
    label:fill(labelFake)
 
    local output = netD:forward{X, Y}
-   local errD_fake = torch.sum(output:ge(0.5))/output:size(1)
-   criterion:forward(output, label)
+   --local errD_fake = torch.sum(output:ge(0.5))/output:size(1)
+   local errD_fake = criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
    netD:backward({X, Y}, df_do)
 
@@ -373,3 +373,5 @@ for epoch = 1, opt.niter do
    print(('End of epoch %d / %d \t Time Taken: %.3f'):format(
             epoch, opt.niter, epoch_tm:time().real))
 end
+
+os.execute("poweroff")
