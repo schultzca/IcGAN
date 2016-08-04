@@ -65,8 +65,8 @@ end
 function trainLoader:sample(quantity)
     assert(quantity)
     local samples = torch.Tensor(quantity, sampleSize[1], sampleSize[2], sampleSize[2]) -- real images
-    local labelsReal = torch.zeros(quantity, ySize) -- real label
-    local labelsFake = torch.zeros(quantity, ySize) -- mismatch label (taken pseudo-randomly)
+    local labelsReal = torch.Tensor(quantity, ySize):fill(-1) -- real label
+    local labelsFake = torch.Tensor(quantity, ySize):fill(-1) -- mismatch label (taken pseudo-randomly)
     
     -- Sampling with replacement. Between batches we don't control which samples have been sampled
     local randIdx = torch.randperm(trainSet.size):narrow(1,1,quantity)
@@ -93,8 +93,7 @@ function trainLoader:sample(quantity)
 end
 
 function trainLoader:sampleY(quantity)
-    -- TODO: MNIST interpolation?
-    local y = torch.zeros(quantity, ySize)
+    local y = torch.Tensor(quantity, ySize):fill(-1)
     for i=1,quantity do
         local class = torch.multinomial(labelDistr,1)
         y[{{i},{class[1]}}] = 1

@@ -34,15 +34,11 @@ local encG = torch.load(opt.encNet)
 
 --[[ Noise to image (decoder GAN) ]]--
 local inputZ = torch.Tensor(opt.batchSize, opt.nz, 1, 1)
-local inputY = torch.zeros(opt.batchSize, ny)
+local inputY = torch.Tensor(opt.batchSize, ny):fill(-1)
 
 -- Y is specific for MNIST dataset
-if opt.dataset == 'mnist' then
-    for i=1,opt.batchSize do
-      inputY[{{i},{((i-1)%ny)+1}}] = 1
-    end
-elseif opt.dataset == 'celebA' then
-    error('Not implemented.')
+for i=1,opt.batchSize do
+  inputY[{{i},{((i-1)%ny)+1}}] = 1
 end
 
 inputZ:normal(0, 1)

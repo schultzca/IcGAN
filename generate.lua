@@ -41,20 +41,11 @@ if (opt.batchSize % ny) ~= 0 then
 end
 
 local Z = torch.Tensor(opt.batchSize, opt.nz, opt.imsize, opt.imsize)
-local Y = torch.zeros(opt.batchSize, ny)
+local Y = torch.zeros(opt.batchSize, ny):fill(-1)
 
--- Y is specific for MNIST dataset
-if opt.dataset == 'mnist' then
-    for i=1,opt.batchSize do
-      Y[{{i},{((i-1)%ny)+1}}] = 1
-    end
-elseif opt.dataset == 'celebA' then
-    Y:fill(-1)
-    for i=1,opt.batchSize do
-        Y[{{i},{((i-1)%ny)+1}}] = 1
-    end
-else  
-    error('Not implemented.')
+-- Build Y
+for i=1,opt.batchSize do
+  Y[{{i},{((i-1)%ny)+1}}] = 1
 end
 
 local net = torch.load(opt.net)

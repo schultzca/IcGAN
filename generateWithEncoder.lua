@@ -79,7 +79,7 @@ local imgSz = {generator.output:size()[2], generator.output:size()[3], generator
 
 local inputX = torch.Tensor(opt.nImages, imgSz[1], imgSz[2], imgSz[3])
 local Z = torch.Tensor(opt.nImages, opt.nz, 1, 1)
-local Y = torch.zeros(opt.nImages, ny)
+local Y = torch.Tensor(opt.nImages, ny):fill(-1)
 
 -- Load to GPU
 if opt.gpu > 0 then

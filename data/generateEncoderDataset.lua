@@ -129,7 +129,7 @@ local function initializeNet(net, opt)
   local Y
   if opt.dataset == 'mnist' then
       opt.ny = 10 -- Y length
-      Y = torch.zeros(opt.batchSize, opt.ny)
+      Y = torch.Tensor(opt.batchSize, opt.ny):fill(-1)
       for i=1,opt.batchSize do
         Y[{{i},{((i-1)%opt.ny)+1}}] = 1 -- Y specific to MNIST dataset
       end

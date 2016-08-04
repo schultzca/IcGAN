@@ -175,7 +175,7 @@ optimStateD = {
 local X = torch.Tensor(opt.batchSize, nc, opt.fineSize, opt.fineSize) -- input images
 local Z = torch.Tensor(opt.batchSize, nz, 1, 1) -- input noise
 local Y = torch.Tensor(opt.batchSize, ny)
-local Y_vis = torch.zeros(opt.batchSize, ny)
+local Y_vis = torch.Tensor(opt.batchSize, ny):fill(-1)
 local label = torch.Tensor(opt.batchSize) -- indicates whether images are real or generated
 local errD, errG
 local epoch_tm = torch.Timer()
@@ -201,19 +201,8 @@ if opt.display then disp = require 'display' end
 
 local noise_vis = Z:clone()
 
-if string.lower(opt.dataset) == 'mnist' then
-    for i=1,opt.batchSize do
-      Y_vis[{{i},{((i-1)%ny)+1}}] = 1
-    end
-elseif string.lower(opt.dataset) == 'celeba' then
-    Y_vis:fill(-1)
-    for i=1,opt.batchSize do
-      Y_vis[{{i},{((i-1)%ny)+1}}] = 1
-    end
-else
-    print("Warning: visualization for this dataset not implemented.")
-    print("Conditional vector Y for visualizating samples will be set to 0.")
-    Y_vis:zero()
+for i=1,opt.batchSize do
+  Y_vis[{{i},{((i-1)%ny)+1}}] = 1
 end
 
 if opt.noise == 'uniform' then
