@@ -134,9 +134,9 @@ outZ:resize(outZ:size(1), outZ:size(2), 1, 1)
 if opt.threshold then
   if string.lower(opt.dataset) == 'mnist' then
     -- Convert to one-hot vector
-      local tmp = torch.zeros(1,ny)
+      local tmp = torch.Tensor(1,ny):fill(-1)
       for i=1,outY:size(1) do
-          tmp:zero()
+          tmp:fill(-1)
           local _, maxIdx = torch.max(outY[{{i},{}}],2)
           tmp[{{},{maxIdx[1][1]}}] = 1
           outY[{{i},{}}] = tmp:clone()
