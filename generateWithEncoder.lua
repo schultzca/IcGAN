@@ -15,13 +15,38 @@ local opt = {
     name = 'encoder_disentangle',
     -- Conditional GAN parameters
     dataset = 'mnist',
+    threshold = true, -- (celebA only) true: threshold original encoded Y to binary 
 }
 
-local function sampleY(outY, dataset, inY)
+local function applyThreshold(Y, th)
+    -- Takes a matrix Y and thresholds, given th, to -1 and 1
+    assert(th>=-1 and th<=1, "Error: threshold must be between -1 and 1")
+    for i=1,Y:size(1) do
+        for j=1,Y:size(2) do
+            local val = Y[{{i},{j}}][1][1]
+            if val > th then
+                Y[{{i},{j}}] = 1
+            else
+                Y[{{i},{j}}] = -1
+            end
+        end
+    end
+    
+    return Y
+end
+
+local function sampleY(outY, dataset, threshold, inY)
   local nSamples = outY:size(1)
   local ny = outY:size(2)
   if string.lower(dataset) == 'celeba' then
-      -- Y is only used for celebA dataset.
+      if threshold then
+          -- Convert Y to binary [-1, 1] vector
+          inY = applyThreshold(inY, 0)
+      end
+      -- Special cases: 
+      -- 1. Male (11 --> 1) or female (11 --> -1): a male will be converted to female and viceversa.
+      -- 2. Bald (1), bangs (2) and receding_hairline (15): only one can be activated at the same time
+      -- 3. Black (3), blonde (4), brown (5) and gray (9) hair: only one can be activated at the same time 
       -- We check if the input real image is male or female.
       -- If it's male (1), we activate the attribute male for all positions
       -- except for one position where we activate the female attribute.
