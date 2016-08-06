@@ -17,15 +17,38 @@ local opt = {
     dataset = 'mnist',
 }
 
-local function sampleY(Y, dataset, ny, batchSize)
-   if dataset == 'mnist' then
-      for i=1,batchSize do
-          Y[{{i},{((i-1)%ny)+1}}] = 1
-      end  
-  elseif dataset == 'celebA' then
-      error('Not implemented.')
+local function sampleY(outY, dataset, inY)
+  local nSamples = outY:size(1)
+  local ny = outY:size(2)
+  if string.lower(dataset) == 'celeba' then
+      -- Y is only used for celebA dataset.
+      -- We check if the input real image is male or female.
+      -- If it's male (1), we activate the attribute male for all positions
+      -- except for one position where we activate the female attribute.
+      -- The same with female (0) (female always activated except for one case)
+      local genderIdx = 11 -- This index is obtained from donkey_celebA.
+      local genderAttr = torch.ge(inY[{{},{genderIdx}}], 0)
+      print('Row\tPredicted gender')
+      local k = 0 -- Indexs genderAttr, which has a different dimension than outY
+      for i=1,nSamples do
+          
+          local j = ((i-1)%ny)+1  -- Indexs outY 2nd dimension
+          if j==1 then
+            k = k + 1
+            if genderAttr[k][1] == 1 then print(('%d\tMale'):format(k)) else print(('%d\tFemale'):format(k)) end  
+          end
+          if j ~= genderIdx or genderAttr[k][1] == 0 then
+              outY[{{i},{j}}] = 1
+              -- By default outY gender attribute is female (0). 
+              -- If we have a male, change attribute to male (except for k == genderIdx)
+              if genderAttr[k][1] == 1 then outY[{{i},{genderIdx}}] = 1 end
+          end
+      end
   else
-      error('Dataset '..dataset..'not recognized.')
+      -- Case of MNIST and other generic datasets
+      for i=1,nSamples do
+          outY[{{i},{((i-1)%ny)+1}}] = 1
+      end 
   end
 end 
 
@@ -68,8 +91,8 @@ if opt.loadOption == 1 then opt.nImages = 1 end
 
 local imgExtension = '.png'
 local ny -- Y label length. This depends on the dataset.
-if opt.dataset == 'mnist' then ny = 10; imgExtension = '.png'
-elseif opt.dataset == 'celebA' then ny = nil; imgExtension = '.jpg'; error('Not implemented.') end
+if string.lower(opt.dataset) == 'mnist' then ny = 10; imgExtension = '.png'
+elseif string.lower(opt.dataset) == 'celeba' then ny = 19; imgExtension = '.jpg'; end
 
 -- Load nets
 local generator = torch.load(opt.decNet)
@@ -134,7 +157,7 @@ for i=1,nOutSamples,ny do
 end
 
 -- Fix Y for every column in generated samples.
-sampleY(outY, opt.dataset, ny, nOutSamples)
+sampleY(outY, opt.dataset, Y)
 
 -- Final image: 1st columns: original image (inputX)
 --              2nd: reconstructed image (reconstX)
