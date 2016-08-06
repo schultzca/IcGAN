@@ -122,7 +122,7 @@ optnet.optimizeMemory(generator, sampleInput)
 -- They just have more repetitions.
 local nOutSamples = opt.nImages*ny
 local outZ = torch.Tensor(nOutSamples, opt.nz, 1, 1)
-local outY = torch.zeros(nOutSamples, ny)
+local outY = torch.Tensor(nOutSamples, ny):fill(-1)
 
 if opt.gpu > 0 then outZ = outZ:cuda(); outY = outY:cuda() end
 -- Fix Z for every row in generated samples.
