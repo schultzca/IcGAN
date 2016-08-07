@@ -5,17 +5,17 @@ disp = require 'display'
 torch.setdefaulttensortype('torch.FloatTensor')
 
 local opt = {
-    nImages = 13,         -- number of samples to produce (only valid if loadOption != 1)
-    decNet = 'checkpoints/c_mnist_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
-    encNet = 'checkpoints/encoder_c_mnist_6epochs.t7',--'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
+    nImages = 20,         -- number of samples to produce (only valid if loadOption != 1)
+    decNet = 'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
+    encNet = 'checkpoints/encoder_c_celeba_Yconv1_noTanh_20epochs.t7',--'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,
     loadOption = 2,  -- 0 = only generated images used, 1 = load input image, 2 = load multiple input images
-    loadPath = 'mnist/imagesTest', --'mnist/images', -- path used when load is 1 (path to single image) or 2 (path to folder with images)
+    loadPath = 'celebA/img_align_celeba', --'mnist/images', -- path used when load is 1 (path to single image) or 2 (path to folder with images)
     name = 'encoder_disentangle',
     -- Conditional GAN parameters
-    dataset = 'mnist',
-    threshold = true, -- (celebA only) true: threshold original encoded Y to binary 
+    dataset = 'celebA',
+    threshold = false, -- (celebA only) true: threshold original encoded Y to binary 
 }
 
 local function applyThreshold(Y, th)
