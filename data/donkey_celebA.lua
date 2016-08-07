@@ -55,12 +55,14 @@ local ySize = #labelHeader
 -- Read the rest of the file
 local i = 1
 local skippedImages = 0 -- Controls if some images are missing
+local narrowVector = false -- If images are missing between non-missing samples, the vector must be narrowed
 for line in file:lines() do  
   local l = line:split('%s+')
   -- Check if image in labels file exists on imPaths
   -- If not, skip it from imLabels
   local imName = imPaths[i-skippedImages]
   if imName == l[1] then
+      if skippedImages > 0 then narrowVector = true end
       local j = 2 -- indexs line l. First element of line is imName, we skip it
       local k = 1 -- index attrFil. Just increments when an filtered attribute is found
       local k2 = 1 -- indexs imLabels with filtered labels
@@ -82,7 +84,7 @@ for line in file:lines() do
 end
 
 -- Narrow imLabels tensor in case some images are missing
-if skippedImages > 0 then imLabels = imLabels:narrow(1,1,imLabels:size(1)-skippedImages) end
+if narrowVector then imLabels = imLabels:narrow(1,1,imLabels:size(1)-skippedImages) end
 
 file:close()
 
