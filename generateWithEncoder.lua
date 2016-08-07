@@ -35,6 +35,19 @@ local function applyThreshold(Y, th)
     return Y
 end
 
+local function findElementInTable(table, element)
+
+    local i = 1
+    local matchIdx = 0
+    while i <= #table and matchIdx == 0 do
+        if torch.any(table[i]:eq(element)) then matchIdx = i end
+        i = i + 1
+    end
+    
+    return matchIdx
+
+end
+
 local function sampleY(outY, dataset, threshold, inY)
   local nSamples = outY:size(1)
   local ny = outY:size(2)
@@ -47,26 +60,42 @@ local function sampleY(outY, dataset, threshold, inY)
       -- 1. Male (11 --> 1) or female (11 --> -1): a male will be converted to female and viceversa.
       -- 2. Bald (1), bangs (2) and receding_hairline (15): only one can be activated at the same time
       -- 3. Black (3), blonde (4), brown (5) and gray (9) hair: only one can be activated at the same time 
+      -- 4. Wavy_Hair (17) and Straight_Hair (18): only one activated at the same time
       -- We check if the input real image is male or female.
-      -- If it's male (1), we activate the attribute male for all positions
-      -- except for one position where we activate the female attribute.
-      -- The same with female (0) (female always activated except for one case)
       local genderIdx = 11 -- This index is obtained from donkey_celebA.
-      local genderAttr = torch.ge(inY[{{},{genderIdx}}], 0)
-      print('Row\tPredicted gender')
+      local genderAttr = torch.ge(inY[{{},{genderIdx}}], 0) -- Stores whether a sample is male (1) or female (0)
+      local filterList = {}
+      filterList[1] = torch.IntTensor{1,2,15}  -- hairstyle filter
+      filterList[2] = torch.IntTensor{3,4,5,9} -- hair color filter
+      filterList[3] = torch.IntTensor{17,18}   -- hair type filter
+      print('Row\tGender\tConfidence')
       local k = 0 -- Indexs genderAttr, which has a different dimension than outY
       for i=1,nSamples do
           
-          local j = ((i-1)%ny)+1  -- Indexs outY 2nd dimension
+          local j = ((i-1)%ny)+1  -- Indexs outY 2nd dimension (attributes)
           if j==1 then
-            k = k + 1
-            if genderAttr[k][1] == 1 then print(('%d\tMale'):format(k)) else print(('%d\tFemale'):format(k)) end  
+              k = k + 1
+              local val = 100*(inY[{{k},{genderIdx}}][1][1])
+              if genderAttr[k][1] == 1 then print(('%d\tMale\t%d%%'):format(k,val)) else print(('%d\tFemale\t%d%%'):format(k,-val)) end  
           end
-          if j ~= genderIdx or genderAttr[k][1] == 0 then
+          
+          -- Instead of setting all the other positions to -1, use the original Y vector
+          outY[{{i},{}}] = inY[{{k},{}}]
+          
+          if j == genderIdx then
+              if genderAttr[k][1] == 0 then outY[{{i},{j}}] = 1 else outY[{{i},{j}}] = -1 end
+          else
+              -- Check if attribute is in filterList
+              local filterIdx = findElementInTable(filterList, j)
+              if filterIdx > 0 then 
+                  -- Put to -1 incompatible attributes of filterList[filterIdx] except for value 'i'
+                  for idx=1,filterList[filterIdx]:size(1) do
+                      if filterList[filterIdx][idx] ~= j then
+                          outY[{{i},{filterList[filterIdx][idx]}}] = -1
+                      end
+                  end
+              end
               outY[{{i},{j}}] = 1
-              -- By default outY gender attribute is female (0). 
-              -- If we have a male, change attribute to male (except for k == genderIdx)
-              if genderAttr[k][1] == 1 then outY[{{i},{genderIdx}}] = 1 end
           end
       end
   else
@@ -182,7 +211,7 @@ for i=1,nOutSamples,ny do
 end
 
 -- Fix Y for every column in generated samples.
-sampleY(outY, opt.dataset, Y)
+sampleY(outY, opt.dataset, opt.threshold, Y)
 
 -- Final image: 1st columns: original image (inputX)
 --              2nd: reconstructed image (reconstX)
