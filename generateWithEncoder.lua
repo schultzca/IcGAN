@@ -122,11 +122,13 @@ local function obtainImageSet(X, path, option, extension)
         assert(paths.dir(path)~=nil, "opt.loadPath '"..path.."' is not a directory.")
         local i = 1
         local fileIterator = paths.files(path, extension)
-        while i <= opt.nImages do
-            local imPath = path .. '/' .. fileIterator()
+        local fileName = fileIterator()
+        while i <= opt.nImages and fileName ~= nil do
+            local imPath = path .. '/' .. fileName
             local im = image.load(imPath)
             X[{{i},{},{},{}}] = image.scale(im, X:size(3), X:size(4))
             i = i + 1
+            fileName = fileIterator()
         end
     else
         error('Option (customInputImage) not recognized.')
