@@ -367,7 +367,9 @@ for epoch = 1, opt.niter do
    parametersG, gradParametersG = nil, nil
    torch.save('checkpoints/' .. opt.name .. '_' .. epoch .. '_net_G.t7', netG)
    torch.save('checkpoints/' .. opt.name .. '_' .. epoch .. '_net_D.t7', netD:clearState())
-   torch.save('checkpoints/' .. opt.name .. '_error', errorData)
+   if opt.display then
+      torch.save('checkpoints/' .. opt.name .. '_error.t7', errorData)
+   end
    parametersD, gradParametersD = netD:getParameters() -- reflatten the params and get them
    parametersG, gradParametersG = netG:getParameters()
    print(('End of epoch %d / %d \t Time Taken: %.3f'):format(
