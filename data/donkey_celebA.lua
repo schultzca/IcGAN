@@ -162,11 +162,11 @@ function trainLoader:sample(quantity)
         
         -- Compute randomly fake class. It can be any classe except the real one.
         labelsFake[{{i},{}}] = imLabels[{{randIdx[quantity+i]},{}}]
-        if torch.all(labelsReal[{{i},{}}]:eq(labelsFake[{{i},{}}])) then 
-        -- If labelsFake happen to be equal to labelsReals, 
-        -- alter randomly some of labelsFake positions (-1 to 1 or 1 to -1)
-            local randPosition = math.random(ySize)
-            labelsFake[{{i},{randPosition}}] = -labelsFake[{{i},{randPosition}}]
+        while torch.all(labelsReal[{{i},{}}]:eq(labelsFake[{{i},{}}])) do
+        -- If labelsFake happen to be equal to labelsReals, pick another
+        -- label until there are not the same
+            local randPosition = math.random(#imPaths)
+            labelsFake[{{i},{}}] = imLabels[{{randPosition},{}}]
         end
     end
     collectgarbage()
