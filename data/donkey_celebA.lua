@@ -20,6 +20,7 @@ if not paths.dirp(opt.dataRoot) then
 end
 
 trainLoader = {}
+local testSetSize = 19961 -- Last N images won't be used for training
 -- Index of the attributes from celebA that will be ignored
 local attrFil = {1,2,3,4,7,8,11,14,15,20,24,25,26,28,30,31,35,37,38,39,40}
 -- Load all image paths on opt.dataRoot folder
@@ -146,13 +147,13 @@ end
 -- trainLoader
 function trainLoader:sample(quantity)
     assert(quantity)
-    assert(quantity*2<=#imPaths, ("Batch size can't be greater than %d"):format(#imPaths/2))
+    assert(quantity*2<=#imPaths-testSetSize, ("Batch size can't be greater than %d"):format(#imPaths/2))
     local samples = torch.Tensor(quantity, sampleSize[1], sampleSize[2], sampleSize[2]) -- real images
     local labelsReal = torch.zeros(quantity, ySize) -- real label
     local labelsFake = torch.zeros(quantity, ySize) -- mismatch label (taken pseudo-randomly)
     
     -- Sampling with replacement. Between batches we don't control which samples have been sampled
-    local randIdx = torch.randperm(#imPaths):narrow(1,1,quantity*2)
+    local randIdx = torch.randperm(#imPaths-testSetSize):narrow(1,1,quantity*2)
     for i=1,quantity do
         -- Load and process image
         samples[{{i},{},{},{}}] = trainHook(images[randIdx[i]])
@@ -165,7 +166,7 @@ function trainLoader:sample(quantity)
         while torch.all(labelsReal[{{i},{}}]:eq(labelsFake[{{i},{}}])) do
         -- If labelsFake happen to be equal to labelsReals, pick another
         -- label until there are not the same
-            local randPosition = math.random(#imPaths)
+            local randPosition = math.random(#imPaths-testSetSize)
             labelsFake[{{i},{}}] = imLabels[{{randPosition},{}}]
         end
     end
@@ -178,7 +179,7 @@ function trainLoader:sampleY(quantity)
     local y = torch.zeros(quantity, ySize)
     
     -- Get real labels
-    local randIdx = torch.randperm(#imPaths):narrow(1,1,quantity)
+    local randIdx = torch.randperm(#imPaths-testSetSize):narrow(1,1,quantity)
     y = imLabels:index(1, randIdx:long())
     
     collectgarbage()
@@ -186,7 +187,7 @@ function trainLoader:sampleY(quantity)
 end
 
 function trainLoader:size()
-    return #imPaths
+    return #imPaths-testSetSize
 end
 
 function trainLoader:ySize()
