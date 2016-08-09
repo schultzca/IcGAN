@@ -44,24 +44,15 @@ local function getParameters()
   return opt
 end
 
-local function stabilizeBN(net, input, noiseType)
-  -- When using a net in evaluation mode, running_mean and running_var
-  -- from BN layers might be a bit off from training, which yields to major
-  -- differences between images generated on training mode from evaluation mode.
-  -- To avoid this, we do some mini-batches iterations without training so that
-  -- they are re-estimated, and then we save the network again.
-  for i=1,100 do
-      -- Set noise depending on the type
-      if noiseType == 'uniform' then
-          input[1]:uniform(-1, 1)
-      elseif noiseType == 'normal' then
-          input[1]:normal(0, 1)
-      end
-      
-      -- Generate images
-      net:forward(input)
-      net.__BNrefreshed = true
-  end
+local function sampleYceleba(Y, idx, batchSize, imLabels)
+    local modIdx = ((idx-1)%imLabels:size(1))+1
+    local endIdx = modIdx+batchSize-1
+    if endIdx > imLabels:size(1) then
+        -- Fill the rest of Y
+        Y:copy(torch.cat(imLabels[{{modIdx,imLabels:size(1)},{}}], imLabels[{{1,endIdx%imLabels:size(1)},{}}],1))
+    else
+        Y:copy(imLabels[{{modIdx,endIdx},{}}])
+    end
 end
 
 local function readCelebaLabels(labelPath, nSamples)
@@ -120,12 +111,37 @@ local function readCelebaLabels(labelPath, nSamples)
     return y
 end
 
+
+local function stabilizeBN(net, input, noiseType, celebaLabels)
+  -- When using a net in evaluation mode, running_mean and running_var
+  -- from BN layers might be a bit off from training, which yields to major
+  -- differences between images generated on training mode from evaluation mode.
+  -- To avoid this, we do some mini-batches iterations without training so that
+  -- they are re-estimated, and then we save the network again.
+  for i=1,100 do
+      -- Set noise depending on the type
+      if noiseType == 'uniform' then
+          input[1]:uniform(-1, 1)
+      elseif noiseType == 'normal' then
+          input[1]:normal(0, 1)
+      end
+      
+      if celebaLabels ~= nil then
+          sampleYceleba(input[2], i, input[1]:size(1), celebaLabels)
+      end
+      
+      -- Generate images
+      net:forward(input)
+  end
+  
+  net.__BNrefreshed = true
+end
+
 local function initializeNet(net, opt)
   -- Initializes the net and the input noise.
   -- This involves passing the network to GPU and other optimizations.
   local imLabels
   local Z = torch.Tensor(opt.batchSize, opt.nz, opt.imsize, opt.imsize)
-
   local Y
   if opt.dataset == 'mnist' then
       opt.ny = 10 -- Y length
@@ -156,7 +172,7 @@ local function initializeNet(net, opt)
       -- the refreshed BN is saved, net.__BNrefreshed will indicate whether
       -- its BN has been refreshed or not.
       print('Refreshing BN...')
-      stabilizeBN(net,{Z,Y:narrow(1,1,Z:size(1))},'normal')
+      stabilizeBN(net,{Z,Y},'normal',imLabels)
       torch.save(opt.net, net)
   end
     
@@ -302,16 +318,9 @@ function main()
       
       -- Y sampling is needed for celebA, as unlike MNIST, there are many possible combinations
       if opt.dataset == 'celebA' then
-          local modIdx = ((i-1)%imLabels:size(1))+1
-          local endIdx = modIdx+opt.batchSize-1
-          if endIdx > imLabels:size(1) then
-              -- Fill the rest of Y
-              Y:copy(torch.cat(imLabels[{{modIdx,imLabels:size(1)},{}}], imLabels[{{1,endIdx%imLabels:size(1)},{}}],1))
-          else
-              Y:copy(imLabels[{{modIdx,endIdx},{}}])
-          end
+          sampleYceleba(Y,i,opt.batchSize,imLabels)
       end
-
+      
       -- Generate images (number specified by opt.batchSize)
       imageSet = net:forward{Z,Y}
       
