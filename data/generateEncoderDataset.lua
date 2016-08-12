@@ -135,6 +135,7 @@ local function stabilizeBN(net, input, noiseType, celebaLabels)
   end
   
   net.__BNrefreshed = true
+  net:evaluate()
 end
 
 local function initializeNet(net, opt)
