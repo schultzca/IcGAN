@@ -65,9 +65,9 @@ local function sampleY(outY, dataset, threshold, inY)
       local genderIdx = 11 -- This index is obtained from donkey_celebA.
       local genderAttr = torch.ge(inY[{{},{genderIdx}}], 0) -- Stores whether a sample is male (1) or female (0)
       local filterList = {}
-      filterList[1] = torch.IntTensor{1,2,15}  -- hairstyle filter
-      filterList[2] = torch.IntTensor{3,4,5,9} -- hair color filter
-      filterList[3] = torch.IntTensor{17,18}   -- hair type filter
+      filterList[1] = torch.IntTensor{1,2,14} -- hairstyle filter
+      filterList[2] = torch.IntTensor{3,4,5,8}-- hair color filter
+      filterList[3] = torch.IntTensor{16,17}
       print('Row\tGender\tConfidence')
       local k = 0 -- Indexs genderAttr, which has a different dimension than outY
       for i=1,nSamples do
@@ -148,7 +148,7 @@ if opt.loadOption == 1 then opt.nImages = 1 end
 local imgExtension = '.png'
 local ny -- Y label length. This depends on the dataset.
 if string.lower(opt.dataset) == 'mnist' then ny = 10; imgExtension = '.png'
-elseif string.lower(opt.dataset) == 'celeba' then ny = 19; imgExtension = '.jpg'; end
+elseif string.lower(opt.dataset) == 'celeba' then ny = 18; imgExtension = '.jpg'; end
 
 -- Load nets
 local generator = torch.load(opt.decNet)

@@ -57,8 +57,8 @@ end
 
 local function readCelebaLabels(labelPath, nSamples)
     -- Index of the attributes from celebA that will be ignored
-    local attrFil = {1,2,3,4,7,8,11,14,15,20,24,25,26,28,30,31,35,37,38,39,40}
-    local celebaSize = 202599 
+    local attrFil = {1,2,3,4,7,8,11,14,15,17,20,24,25,26,28,30,31,35,37,38,39,40}
+    local celebaSize = 202599
     local file = io.open(labelPath, 'r')
     
     file:read() -- Skip 1st line

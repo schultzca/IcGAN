@@ -29,7 +29,7 @@ end
 
 local ny -- Y label length. This depends on the dataset.
 if opt.dataset == 'mnist' then ny = 10 
-elseif opt.dataset == 'celebA' then ny = 19
+elseif opt.dataset == 'celebA' then ny = 18
 else error('Not implemented.') end
 
 assert(opt.batchSize >= ny, ('opt.batchSize must be equal or greater than %d (ny).'):format(ny))

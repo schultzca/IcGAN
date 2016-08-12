@@ -22,7 +22,7 @@ end
 trainLoader = {}
 local testSetSize = 19961 -- Last N images won't be used for training
 -- Index of the attributes from celebA that will be ignored
-local attrFil = {1,2,3,4,7,8,11,14,15,20,24,25,26,28,30,31,35,37,38,39,40}
+local attrFil = {1,2,3,4,7,8,11,14,15,17,20,24,25,26,28,30,31,35,37,38,39,40}
 -- Load all image paths on opt.dataRoot folder
 local imPaths = torch.load(opt.dataRoot..'/imNames.dmp')
 print('Loading images from '..opt.dataRoot..'/images.dmp')
