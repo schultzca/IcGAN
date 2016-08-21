@@ -226,21 +226,19 @@ local fDx = function(x)
    -- Train with real images X and correct conditioning vectors Y
    local output = netD:forward{X, Y}
    --local errD_real = torch.sum(output:lt(0.5))/output:size(1)
-   errD_real = criterion:forward(output, label)
+   local errD_real = criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
-   if opt.trainWrongY then 
-        df_do:mul(0.5) -- Real image error is shared equally between real Y and wrong Y 
-   end
    netD:backward({X, Y}, df_do)
    
    -- Train with real images and wrong Y
+   local errD_wrongY = 0
    if opt.trainWrongY then
       Y:copy(yWrong)
       label:fill(labelFake)
       
       output = netD:forward{X, Y}
       --errD_real = ((torch.sum(output:lt(0.5))/output:size(1)) + errD_real)/2
-      criterion:forward(output, label)
+      errD_wrongY = 0.5*criterion:forward(output, label)
       df_do = criterion:backward(output, label)
       df_do:mul(0.5)
       netD:backward({X, Y}, df_do)
@@ -263,10 +261,14 @@ local fDx = function(x)
    --local errD_fake = torch.sum(output:ge(0.5))/output:size(1)
    local errD_fake = criterion:forward(output, label)
    local df_do = criterion:backward(output, label)
+   if opt.trainWrongY then 
+        df_do:mul(0.5) -- Fake image error is shared equally between real Y and wrong Y 
+        errD_fake = errD_fake * 0.5
+   end
    netD:backward({X, Y}, df_do)
 
    -- Error indicates % of how many samples have been incorrectly guessed by the discriminator
-   errD = (errD_real + errD_fake) / 2
+   errD = (errD_real + errD_fake + errD_wrongY) / 2
 
    return errD, gradParametersD
 end
