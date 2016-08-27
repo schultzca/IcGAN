@@ -1,2 +1,4 @@
-Encoding Conditional GANs
+Bidirectional Conditional GANs
 ===========================================================
+
+Work under construction!
