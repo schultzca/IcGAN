@@ -90,7 +90,7 @@ local CM = torch.IntTensor(Y:size(2), 2, 2):zero() -- There are Y:size(1) confus
 for batch = 1, nSamples-opt.batchSize+1, opt.batchSize  do
     -- Assign batch
     batchX:copy(X[{{batch,batch+opt.batchSize-1},{},{},{}}])
-    local Yreal = Y[{{batch,batch+opt.batchSize},{}}]
+    local Yreal = Y[{{batch,batch+opt.batchSize-1},{}}]
     
     -- Predict attributes Y
     local Ypred = Anet:forward(batchX):float()
