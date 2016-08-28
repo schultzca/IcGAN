@@ -9,8 +9,7 @@ local opt = {
     net = 'checkpoints/Anet2_celebA_5epochs.t7',-- path to the network
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,
-    imagesPath = 'celebA/imagesTest.dmp',  -- path to file containing the images X to evaluate
-    labelsPath = 'celebA/labelsTest.dmp',  -- path to file containing the labels Y corresponding to imagesPath
+    testSetPath = 'celebA/im_and_labels_test_set.dmp',  -- path to file containing the images X to and labels Y
 }
 torch.manualSeed(123)
 
@@ -26,8 +25,15 @@ end
 local Anet = torch.load(opt.net)
 
 -- Load samples for evaluating
-local X = torch.load(opt.imagesPath)
-local Y = torch.load(opt.labelsPath):add(1):div(2) -- Convert [-1,1] to [0,1]
+print('Loading test dataset...')
+local data = torch.load(opt.testSetPath)
+local X = data.X
+if X:min() >= 0 then 
+    print('Seems images X are not in range [-1,1].\nAssuming range [0,1] and scaling to [-1,1].')
+    X = X:add(1):div(2) -- Convert [-1,1] to [0,1]
+end 
+print(('Done. Loaded %.2f GB (%d images).'):format((4*X:size(1)*X:size(2)*X:size(3)*X:size(4))/2^30, X:size(1)))
+local Y = data.Y:add(1):div(2) -- Convert [-1,1] to [0,1]
 local nSamples = X:size(1)
 
 -- Initialize batches
