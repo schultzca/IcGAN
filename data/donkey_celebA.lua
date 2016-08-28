@@ -89,6 +89,8 @@ if narrowVector then imLabels = imLabels:narrow(1,1,imLabels:size(1)-skippedImag
 
 file:close()
 
+torch.save(opt.dataRoot..'/imLabels.dmp', imLabels)
+
 -- Calculate probabilities from each attribute
 local attrProb = torch.sum(imLabels:clone():add(1):div(2), 1):float():div(imLabels:size(1))
 attrProb:resize(attrProb:size(2))
