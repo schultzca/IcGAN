@@ -219,7 +219,7 @@ local function displayConfig(disp, title)
           {
             title = 'Encoder error - ' .. title,
             win = 1,
-            labels = {'Batch iterations', 'Train error', 'Test error'},
+            labels = {'Epoch', 'Train error', 'Test error'},
             ylabel = "Error",
             legend='always'
           }
@@ -337,7 +337,7 @@ function main()
               errorTest = criterion:forward(outputs, {batchZ, batchY})
               table.insert(errorData,
               {
-                batchIterations, -- x-axis
+                batchIterations/math.ceil(nTrainSamples / opt.batchSize) -- x-axis
                 errorTrain, -- y-axis for label1
                 errorTest -- y-axis for label2
               })

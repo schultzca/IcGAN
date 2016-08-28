@@ -311,7 +311,7 @@ if opt.display then
   {
     title = 'Generator and discriminator error',
     win = opt.display_id * 4,
-    labels = {'Batch iterations', 'G error', 'D error'},
+    labels = {'Epoch', 'G error', 'D error'},
     ylabel = "G error",
     y2label = "D error",
     legend = 'always',
@@ -346,7 +346,7 @@ for epoch = 1, opt.niter do
           -- display generator and discriminator error
           table.insert(errorData,
           {
-            batchIterations, -- x-axis
+            batchIterations/math.ceil(nTrainSamples / opt.batchSize), -- x-axis
             errG, -- y-axis for label1
             errD -- y-axis for label2
           })
