@@ -323,11 +323,12 @@ if opt.display then
 end
 
 -- train
+local nSamples = math.min(data:size(), opt.ntrain)
 local batchIterations = 0
 for epoch = 1, opt.niter do
    epoch_tm:reset()
    local counter = 0
-   for i = 1, math.min(data:size(), opt.ntrain), opt.batchSize do
+   for i = 1, nSamples, opt.batchSize do
       tm:reset()
       -- (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
       optim.adam(fDx, parametersD, optimStateD)
@@ -346,7 +347,7 @@ for epoch = 1, opt.niter do
           -- display generator and discriminator error
           table.insert(errorData,
           {
-            batchIterations/math.ceil(nTrainSamples / opt.batchSize), -- x-axis
+            batchIterations/math.ceil(nSamples / opt.batchSize), -- x-axis
             errG, -- y-axis for label1
             errD -- y-axis for label2
           })
