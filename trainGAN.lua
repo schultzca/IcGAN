@@ -368,7 +368,7 @@ for epoch = 1, opt.niter do
    paths.mkdir('checkpoints')
    parametersD, gradParametersD = nil, nil -- nil them to avoid spiking memory
    parametersG, gradParametersG = nil, nil
-   torch.save('checkpoints/' .. opt.name .. '_' .. epoch .. '_net_G.t7', netG)
+   torch.save('checkpoints/' .. opt.name .. '_' .. epoch .. '_net_G.t7', netG:clearState())
    torch.save('checkpoints/' .. opt.name .. '_' .. epoch .. '_net_D.t7', netD:clearState())
    if opt.display then
       torch.save('checkpoints/' .. opt.name .. '_error.t7', errorData)
