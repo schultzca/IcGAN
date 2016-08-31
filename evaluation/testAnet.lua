@@ -110,17 +110,19 @@ local recalls = accuracies:clone()
 local f1scores = accuracies:clone()
 
 for i=1, CM:size(1) do 
-local TP_TN = torch.sum(torch.diag(CM[i]))
-    local FP_FN = torch.sum(CM[i])-TP_TN
     local TN = CM[i][1][1]
     local FP = CM[i][1][2]
     local FN = CM[i][2][1]
     local TP = CM[i][2][2]
     precisions[i] = 100*(TP/(TP+FP))
     recalls[i] = 100*(TP/(TP+FN))
+    -- Filter NaN 
+    if precisions[i] ~= precisions[i] then precisions[i] = 100 end
+    if recalls[i] ~= recalls[i] then recalls[i] = 100 end
+    
     accuracies[i] = 100*((TP+TN)/(TP+TN+FP+FN))
     f1scores[i] = 2*((precisions[i]*recalls[i]) / (precisions[i]+recalls[i]))
-    print(('Accuracy %d: %.2f%%\tF1Scores: %.2f%%'):format(i, accuracies[i],f1scores[i]))
+    print(('Accuracy %d: %.2f%%\tF1Score: %.2f%%'):format(i, accuracies[i],f1scores[i]))
 end
 
 print(('Mean accuracy: %.2f%%\tMean F1Score: %.2f%%'):format(torch.mean(accuracies), torch.mean(f1scores)))
