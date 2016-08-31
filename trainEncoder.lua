@@ -191,14 +191,22 @@ local function getEncoderVAE_GAN(sample, nFiltersBase, Zsz, Ysz, nConvLayers)
     return encoder, criterion
 end
 
-local function assignBatches(batchX, batchY, x, y, batch, batchSize, shuffle)
+local function assignBatches(batchX, batchZ, batchY, x, z, y, tmpX, tmpZ, tmpY, batch, batchSize, shuffle)
     
     data_tm:reset(); data_tm:resume()
-    batchX:copy(x:index(1, shuffle))
-    batchZ:copy(z:index(1, shuffle))
-    batchY:copy(y:index(1, shuffle))
+    
+    local idx = 1
+    for i = batch, batch+batchSize-1 do -- Haven't found a way to do this without a for loop and tmp variables
+         tmpX[idx] = x[{{shuffle[i]},{},{},{}}]
+         tmpZ[idx] = z[{{shuffle[i]},{},{},{}}]
+         tmpY[idx] = y[{{shuffle[i]},{}}]
+         idx = idx + 1
+    end
     data_tm:stop()
-
+    batchX:copy(tmpX)
+    batchZ:copy(tmpZ)
+    batchY:copy(tmpY)
+    
     return batchX, batchZ, batchY
 end
 
@@ -291,6 +299,9 @@ function main()
   
   local nTrainSamples = xTrain:size(1)
   local nTestSamples = xTest:size(1)
+  local tmpX = torch.Tensor(batchX:size())
+  local tmpZ = torch.Tensor(batchZ:size())
+  local tmpY = torch.Tensor(batchY:size())
   
   -- Initialize display configuration (if enabled)
   local errorData, errorDispConfig = displayConfig(opt.display, opt.name)
@@ -301,7 +312,7 @@ function main()
   local batchIterations = 0 -- for display purposes only
   for epoch = 1, opt.nEpochs do
       epoch_tm:reset()
-      local shuffle = torch.randperm(nTrainSamples):long()
+      local shuffle = torch.randperm(nTrainSamples)
       for batch = 1, nTrainSamples-opt.batchSize+1, opt.batchSize  do
           tm:reset()
           -- Assign batches
@@ -309,7 +320,7 @@ function main()
           batchX:copy(xTrain[{{batch,splitInd}}])
           batchY:copy(yTrain[{{batch,splitInd}}])--]]
           
-          batchX, batchZ, batchY = assignBatches(batchX, batchZ, batchY, xTrain, zTrain, yTrain, batch, opt.batchSize, shuffle)
+          batchX, batchZ, batchY = assignBatches(batchX, batchZ, batchY, xTrain, zTrain, yTrain, tmpX, tmpZ, tmpY, batch, opt.batchSize, shuffle)
           
           if opt.display == 2 and batchIterations % 20 == 0 then
               display.image(image.toDisplayTensor(batchX,0,torch.round(math.sqrt(opt.batchSize))), {win=2, title='Train mini-batch'})
@@ -321,7 +332,7 @@ function main()
           -- Display train and test error
           if opt.display and batchIterations % 20 == 0 then
               -- Test error
-              batchX, batchZ, batchY = assignBatches(batchX, batchZ, batchY, xTest, zTest, yTest, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
+              batchX, batchZ, batchY = assignBatches(batchX, batchZ, batchY, xTest, zTest, yTest, tmpX, tmpZ, tmpY, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
               local outputs = encoder:forward(batchX)
               errorTest = criterion:forward(outputs, {batchZ, batchY})
               table.insert(errorData,
@@ -352,7 +363,7 @@ function main()
             epoch, opt.nEpochs, epoch_tm:time().real))
             
       -- Store network
-      torch.save(opt.outputPath .. opt.name .. '_' .. epoch .. 'epochs.t7', encoder)
+      torch.save(opt.outputPath .. opt.name .. '_' .. epoch .. 'epochs.t7', encoder:clearState())
       torch.save('checkpoints/' .. opt.name .. '_error.t7', errorData)
   end
   
