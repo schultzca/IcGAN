@@ -11,11 +11,11 @@ local function getParameters()
         name = 'encoder_c_celeba_Yconv1',
         batchSize = 64,
         outputPath= 'checkpoints/',        -- path used to store the encoder network
-        datasetPath = 'celebA/c_generatedDataset/', -- folder where the dataset is stored (not the file itself)
+        datasetPath = 'celebA/c_Yconv1_generatedDataset/', -- folder where the dataset is stored (not the file itself)
         split = 0.66,           -- split between train and test (i.e 0.66 -> 66% train, 33% test)
         nConvLayers = 4,--4,--3 MNIST,        -- # of convolutional layers on the net
         nf = 32,--64,--128 MNIST, --512 for AAE -- #  of filters in hidden layer
-        nEpochs = 20,            -- #  of epochs
+        nEpochs = 15,            -- #  of epochs
         lr = 0.0001,            -- initial learning rate for adam
         beta1 = 0.1,            -- momentum term of adam
         display = 1,            -- display 1= train and test error, 2 = error + batches images, 0 = false
@@ -86,51 +86,6 @@ local function weights_init(m)
    end
 end
 
-local function getEncoderAEV(sample, hiddenLayerSize, outputSize)
-    -- Encoder architecture taken from https://github.com/y0ast/VAE-Torch, which is
-    -- based on Auto-Encoding Variational Bayes paper from D. Kingma and M. Welling
-    error('Architecture not adapted for cGANs.')
-    local inputSize = nn.View(-1):forward(sample):size()[1] --xTrain[1]:size(1)*xTrain[1]:size(2)*xTrain[1]:size(3)*xTrain[1]:size(4)
-    local encoder = nn.Sequential()
-    encoder:add(nn.View(-1):setNumInputDims(3)) -- Explanation of this reshape on getEnocderAAE function
-    encoder:add(nn.Linear(inputSize, hiddenLayerSize))
-    encoder:add(nn.ReLU(true))
-    
-    local mean_logvar = nn.ConcatTable()
-    mean_logvar:add(nn.Linear(hiddenLayerSize, outputSize))
-    mean_logvar:add(nn.Linear(hiddenLayerSize, outputSize))
-
-    encoder:add(mean_logvar)
-    
-    local criterion = nn.DistKLDivCriterion()
-    
-    return encoder, criterion
-end
-
-local function getEncoderAAE(sample, hiddenLayerSize, outputSize)
-  -- Encoder architecture taken from Adversarial Autoencoders from A. Makhzan et al.
-  -- "The encoder, decoder and discriminator each have two layers of 1000 hidden units with
-  -- ReLU activation function. The autoencoder is trained with a Euclidean cost function for reconstruction. 
-    error('Architecture not adapted for cGANs.')
-    local inputSize = nn.View(-1):forward(sample):size()[1] --xTrain[1]:size(1)*xTrain[1]:size(2)*xTrain[1]:size(3)*xTrain[1]:size(4)
-    local encoder = nn.Sequential()
-    -- This layer reshapes a tensor of #samples x im3 x im2 x im1 to
-    -- #samples x im3*im2*im1.
-    --  · View(-1) -> reshape to one-dimension tensor
-    --  · setNumInputDims(3) --> original input has 3 dimensions, therefore the 
-    --    4th dimension (which is the first, #samples), indicates the number of samples.
-    --    This allows to create minibatches: every row is a sample.
-    encoder:add(nn.View(-1):setNumInputDims(3))
-    encoder:add(nn.Linear(inputSize, hiddenLayerSize))
-    encoder:add(nn.ReLU(true))
-    encoder:add(nn.Linear(hiddenLayerSize, outputSize))
-    --encoder:add(nn.ReLU(true))
-    
-    local criterion = nn.MSECriterion() --nn.AbsCriterion()
-    
-    return encoder, criterion
-end
-
 local function getEncoderVAE_GAN(sample, nFiltersBase, Zsz, Ysz, nConvLayers)
   -- Encoder architecture taken from Autoencoding beyond pixels using a learned similarity metric (VAE/GAN hybrid)
   -- Zsz: size of the output vector Z
@@ -179,6 +134,63 @@ local function getEncoderVAE_GAN(sample, nFiltersBase, Zsz, Ysz, nConvLayers)
         if i==1 then outputSize = Zsz else outputSize = Ysz end
         ctModule:add(nn.Linear(inputFilterFC, outputSize))
         --ctModule:add(nn.Tanh()) 
+        
+        ct:add(ctModule)
+    end
+    
+    encoder:add(ct)
+    
+    local mse = nn.MSECriterion()
+    local criterion = nn.ParallelCriterion():add(mse):add(mse)
+    
+    return encoder, criterion
+end
+
+local function getEncoderALI(sample, nFiltersBase, Zsz, Ysz)
+  -- Encoder architecture taken from Autoencoding beyond pixels using a learned similarity metric (VAE/GAN hybrid)
+  -- Zsz: size of the output vector Z
+  -- Ysz: size of the output vector Y
+  
+  -- Sample is used to know the dimensionality of the data. 
+  -- For convolutional layers we are only interested in the third dimension (RGB or grayscale)
+    local inputSize = sample:size(1)
+    local outputSize
+    local encoder = nn.Sequential()
+    --3 x 64 x 64
+    encoder:add(nn.SpatialConvolution(inputSize, 64, 2, 2, 1, 1, 0, 0))
+    encoder:add(nn.SpatialBatchNormalization(64))
+    encoder:add(nn.LeakyReLU(0.2, true))
+    --w = 64; k=2; s=1; p=0;
+    --math.floor((w+2*p-k)/s+1)
+    
+    -- After 1st conv layer, split network in two: one module outputs Z, the other Y.
+    -- Both share the same architecture, but do not share parameters.
+    local ct = nn.ConcatTable()
+    
+    for i=1,2 do -- repeat 2 times, one for each module (Z and Y)
+        local ctModule = nn.Sequential()
+        -- 64 x 63 x 63
+        ctModule:add(nn.SpatialConvolution(64, 128, 7, 7, 2, 2, 0, 0))
+        ctModule:add(nn.SpatialBatchNormalization(128))
+        ctModule:add(nn.LeakyReLU(0.2, true))
+        -- 128 x 29 x 29 
+        ctModule:add(nn.SpatialConvolution(128, 256, 5, 5, 2, 2, 0, 0))
+        ctModule:add(nn.SpatialBatchNormalization(256))
+        ctModule:add(nn.LeakyReLU(0.2, true))
+        -- 256 x 13 x 13 
+        ctModule:add(nn.SpatialConvolution(256, 256, 7, 7, 2, 2, 0, 0))
+        ctModule:add(nn.SpatialBatchNormalization(256))
+        ctModule:add(nn.LeakyReLU(0.2, true))
+        -- 256 x 4 x 4
+        ctModule:add(nn.SpatialConvolution(256, 512, 4, 4, 1, 1, 0, 0))
+        ctModule:add(nn.SpatialBatchNormalization(512))
+        ctModule:add(nn.LeakyReLU(0.2, true))
+        -- 512 x 1 x 1
+        if i==1 then outputSize = Zsz else outputSize = Ysz end
+        ctModule:add(nn.SpatialConvolution(512, outputSize, 1, 1, 1, 1, 0, 0))
+        -- outputSize x 1 x 1
+        ctModule:add(nn.View(-1):setNumInputDims(3))
+        -- outputSize
         
         ct:add(ctModule)
     end
@@ -305,7 +317,6 @@ function main()
   
   -- Initialize display configuration (if enabled)
   local errorData, errorDispConfig = displayConfig(opt.display, opt.name)
-  
   paths.mkdir(opt.outputPath)
   
   -- Train network
