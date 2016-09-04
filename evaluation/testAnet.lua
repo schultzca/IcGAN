@@ -125,4 +125,8 @@ for i=1, CM:size(1) do
     print(('Accuracy %d: %.2f%%\tF1Score: %.2f%%'):format(i, accuracies[i],f1scores[i]))
 end
 
+-- Filter NaN
+--precisions[precisions:ne(precisions)] = 1
+--recalls[recalls:ne(recalls)] = 1
+
 print(('Mean accuracy: %.2f%%\tMean F1Score: %.2f%%'):format(torch.mean(accuracies), torch.mean(f1scores)))
