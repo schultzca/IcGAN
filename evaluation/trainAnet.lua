@@ -5,14 +5,14 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 local function getParameters()
   local opt = {
-        name = 'Anet2_celebA',
+        name = 'Anet_celebA',
         batchSize = 128,
         outputPath= 'checkpoints/',        -- path used to store the Anet network
         datasetPath = 'celebA/', -- folder where the dataset is stored (not the file itself)
         split = 0.66,           -- split between train and test (i.e 0.66 -> 66% train, 33% test)
         nConvLayers = 4,        -- # of convolutional layers on the net
         nf = 32,                -- #  of filters in hidden layer
-        nEpochs = 10,           -- #  of epochs
+        nEpochs = 15,           -- #  of epochs
         lr = 0.0001,            -- initial learning rate for adam
         beta1 = 0.1,            -- momentum term of adam
         display = 1,            -- display 1= train and test error, 2 = error + batches images, 0 = false
@@ -108,10 +108,7 @@ local function assignBatches(batchX, batchY, x, y, batch, batchSize, shuffle)
     batchX:copy(x:index(1, shuffle))
     batchY:copy(y:index(1, shuffle))
     data_tm:stop()
-
-    print(batchX[{{1},{1,5},{},{}}]) 
-    print(batchY[{{1},{1,5}}])     
-    print('\n')
+    
     return batchX, batchY
 end
 
@@ -140,7 +137,7 @@ function main()
   -- Set timers
   local epoch_tm = torch.Timer()
   local tm = torch.Timer()
-  data_tm = torch.Timer()
+  local data_tm = torch.Timer()
 
   -- Read dataset
   local X, Y
