@@ -17,11 +17,11 @@ local function getParameters()
     samples = 202599,          -- total number of samples to generate
     batchSize = 256,         -- number of samples to produce at the same time
     noisetype = 'normal',  -- type of noise distribution (uniform / normal).
-    net = 'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',-- path to the generator network
+    net = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7',-- path to the generator network
     imsize = 1,            -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px,
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,              -- size of noise vector
-    outputFolder = 'celebA/c_generatedDataset/', -- path where the dataset will be stored
+    outputFolder = 'celebA/c_Yconv1_generatedDataset/', -- path where the dataset will be stored
     outputFormat = 'binary', -- (binary | ascii) binary is faster, but platform-dependent.
     storeAsTensor = true,    -- true -> store images as tensor, false -> store images as images (lossy)
     -- Conditional GAN parameters
@@ -105,7 +105,8 @@ local function readCelebaLabels(labelPath, nSamples)
     
     local y = torch.Tensor(nSamples, ySize)
     
-    local randIdx = torch.randperm(celebaSize):narrow(1,1,nSamples)
+    -- We subtract 19961 (test set size) as not to use y from the test set
+    local randIdx = torch.randperm(celebaSize-19961):narrow(1,1,nSamples)
     y = imLabels:index(1, randIdx:long())
     
     return y
