@@ -15,7 +15,7 @@ local opt = {
     name = 'encoder_disentangle',
     -- Conditional GAN parameters
     dataset = 'celebA',
-    threshold = false, -- (celebA only) true: threshold original encoded Y to binary 
+    threshold = true, -- (celebA only) true: threshold original encoded Y to binary 
 }
 
 local function applyThreshold(Y, th)
@@ -52,6 +52,8 @@ local function sampleY(outY, dataset, threshold, inY)
   local nSamples = outY:size(1)
   local ny = outY:size(2)
   if string.lower(dataset) == 'celeba' then
+      local genderIdx = 11 -- This index is obtained from donkey_celebA.
+      local genderConfidence = 100*inY[{{},{genderIdx}}]
       if threshold then
           -- Convert Y to binary [-1, 1] vector
           inY = applyThreshold(inY, 0)
@@ -61,8 +63,7 @@ local function sampleY(outY, dataset, threshold, inY)
       -- 2. Bald (1), bangs (2) and receding_hairline (15): only one can be activated at the same time
       -- 3. Black (3), blonde (4), brown (5) and gray (9) hair: only one can be activated at the same time 
       -- 4. Wavy_Hair (17) and Straight_Hair (18): only one activated at the same time
-      -- We check if the input real image is male or female.
-      local genderIdx = 11 -- This index is obtained from donkey_celebA.
+      -- We check if the input real image is male or female..
       local genderAttr = torch.ge(inY[{{},{genderIdx}}], 0) -- Stores whether a sample is male (1) or female (0)
       local filterList = {}
       filterList[1] = torch.IntTensor{1,2,14} -- hairstyle filter
@@ -75,7 +76,7 @@ local function sampleY(outY, dataset, threshold, inY)
           local j = ((i-1)%ny)+1  -- Indexs outY 2nd dimension (attributes)
           if j==1 then
               k = k + 1
-              local val = 100*(inY[{{k},{genderIdx}}][1][1])
+              local val = genderConfidence[{{k}}][1][1]
               if genderAttr[k][1] == 1 then print(('%d\tMale\t%d%%'):format(k,val)) else print(('%d\tFemale\t%d%%'):format(k,-val)) end  
           end
           
