@@ -131,6 +131,8 @@ local function obtainImageSet(X, path, option, extension)
             i = i + 1
             fileName = fileIterator()
         end
+        assert(i~=1, "No images have been found in opt.loadPath '"..path.."'")
+        assert(i-1==opt.nImages, "Only ".. i-1 .." images have been found in opt.loadPath '"..path.."', expected "..opt.nImages..".")
     else
         error('Option (customInputImage) not recognized.')
     end
@@ -157,7 +159,7 @@ local encoder = torch.load(opt.encNet)
 
 local imgSz = {generator.output:size()[2], generator.output:size()[3], generator.output:size()[4]}
 
-local inputX = torch.Tensor(opt.nImages, imgSz[1], imgSz[2], imgSz[3])
+local inputX = torch.Tensor(opt.nImages, imgSz[1], imgSz[2], imgSz[3]):zero()
 local Z = torch.Tensor(opt.nImages, opt.nz, 1, 1)
 local Y = torch.Tensor(opt.nImages, ny):fill(-1)
 
@@ -231,4 +233,4 @@ end
 disp.image(image.toDisplayTensor(outputImage,0,ny+2))
 image.save(opt.name .. '.png', image.toDisplayTensor(outputImage,0,ny+2))
 
-
+print('Done!')
