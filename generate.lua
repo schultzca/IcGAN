@@ -6,7 +6,7 @@ torch.setdefaulttensortype('torch.FloatTensor')
 local opt = {
     batchSize = 1000,        -- number of samples to produce (it should be multiple of ny)
     noisetype = 'normal',  -- type of noise distribution (uniform / normal).
-    net = 'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',              -- path to the generator network
+    net = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7',              -- path to the generator network
     imsize = 1,            -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px, ...
     noisemode = 'random',  -- random / line / linefull1d / linefull
     name = 'celebA_analogies',  -- name of the file saved
