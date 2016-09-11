@@ -207,7 +207,7 @@ function main()
   local batchIterations = 0 -- for display purposes only
   for epoch = 1, opt.nEpochs do
       epoch_tm:reset()
-      local shuffle = torch.randperm(nTrainSamples):long()
+      local shuffle = torch.randperm(nTrainSamples):narrow(1,1,opt.batchSize):long()
       for batch = 1, nTrainSamples-opt.batchSize+1, opt.batchSize  do
           tm:reset()
           -- Assign batches
@@ -227,7 +227,7 @@ function main()
           -- Display train and test error
           if opt.display and batchIterations % 20 == 0 then
               -- Test error
-              batchX, batchY = assignBatches(batchX, batchY, xTest, yTest, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
+              batchX, batchY = assignBatches(batchX, batchY, xTest, yTest, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples):narrow(1,1,opt.batchSize):long())
               local outputs = Anet:forward(batchX)
               errorTest = criterion:forward(outputs, batchY)
               table.insert(errorData,
