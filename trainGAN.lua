@@ -17,6 +17,7 @@ opt = {
    ntrain = math.huge,     -- #  of examples per epoch. math.huge for full dataset
    display = 1,            -- display samples while training. 0 = false
    display_id = 10,        -- display window id.
+   saveGif = 0,            -- saveGif = 1 saves images of the generated samples progress to later create a gif
    gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
    name = 'c_celebA_64_filt_Yconv1',
    noise = 'normal',       -- uniform / normal
@@ -40,6 +41,9 @@ torch.manualSeed(opt.manualSeed)
 if opt.gpu > 0 then
     cutorch.manualSeed(opt.manualSeed)
 end
+
+if opt.saveGif > 0 then paths.mkdir('gif') end
+
 torch.setnumthreads(1)
 torch.setdefaulttensortype('torch.FloatTensor')
 assert(opt.fineSize >= 8, "Minimum fineSize is 8x8.")
@@ -352,7 +356,10 @@ for epoch = 1, opt.niter do
             errD -- y-axis for label2
           })
           disp.plot(errorData, errorDispConfig)
-          
+          if opt.saveGif > 0 then 
+            image.save(('gif/%.4f.jpg'):format(batchIterations/math.ceil(nSamples / opt.batchSize)), 
+                       image.toDisplayTensor(fake,0,torch.round(math.sqrt(opt.batchSize)),true)) 
+          end
       end
 
       -- logging
