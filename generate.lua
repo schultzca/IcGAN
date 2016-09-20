@@ -65,33 +65,6 @@ elseif opt.noisetype == 'normal' then
   end
 end
 
-noiseL = torch.FloatTensor(opt.nz):uniform(-1, 1)
-noiseR = torch.FloatTensor(opt.nz):uniform(-1, 1)
-if opt.noisemode == 'line' then
-   -- do a linear interpolation in Z space between point A and point B
-   -- each sample in the mini-batch is a point on the line
-    line  = torch.linspace(0, 1, opt.batchSize)
-    for i = 1, opt.batchSize do
-        Z:select(1, i):copy(noiseL * line[i] + noiseR * (1 - line[i]))
-    end
-elseif opt.noisemode == 'linefull1d' then
-   -- do a linear interpolation in Z space between point A and point B
-   -- however, generate the samples convolutionally, so a giant image is produced
-    assert(opt.batchSize == 1, 'for linefull1d mode, give batchSize(1) and imsize > 1')
-    Z = Z:narrow(3, 1, 1):clone()
-    line  = torch.linspace(0, 1, opt.imsize)
-    for i = 1, opt.imsize do
-        Z:narrow(4, i, 1):copy(noiseL * line[i] + noiseR * (1 - line[i]))
-    end
-elseif opt.noisemode == 'linefull' then
-   -- just like linefull1d above, but try to do it in 2D
-    assert(opt.batchSize == 1, 'for linefull mode, give batchSize(1) and imsize > 1')
-    line  = torch.linspace(0, 1, opt.imsize)
-    for i = 1, opt.imsize do
-        Z:narrow(3, i, 1):narrow(4, i, 1):copy(noiseL * line[i] + noiseR * (1 - line[i]))
-    end
-end
-
 if opt.gpu > 0 then
     net:cuda()
     cudnn.convert(net, cudnn)
