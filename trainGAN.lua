@@ -18,6 +18,7 @@ opt = {
    display = 1,            -- display samples while training. 0 = false
    display_id = 10,        -- display window id.
    saveGif = 0,            -- saveGif = 1 saves images of the generated samples progress to later create a gif
+   poweroff = 0,           -- 1 = power off computer after training, 0 = not power off
    gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
    name = 'c_celebA_64_filt_Yconv1',
    noise = 'normal',       -- uniform / normal
@@ -386,4 +387,4 @@ for epoch = 1, opt.niter do
             epoch, opt.niter, epoch_tm:time().real))
 end
 
-os.execute("poweroff")
+if opt.poweroff > 0 then os.execute("poweroff") end
