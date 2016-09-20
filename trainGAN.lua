@@ -35,7 +35,7 @@ if opt.gpu > 0 then
   require 'cunn'
   require 'cudnn'
 end
-opt.manualSeed = 5000--torch.random(1, 10000) -- fix seed
+opt.manualSeed = torch.random(1, 10000) 
 print("Random Seed: " .. opt.manualSeed)
 torch.manualSeed(opt.manualSeed)
 if opt.gpu > 0 then
