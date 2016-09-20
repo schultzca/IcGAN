@@ -25,7 +25,7 @@ opt = {
    dataRoot = 'celebA',     -- path to the dataset images, if not mnist. If mnist, just put 'mnist'
    randomCrop = false,     -- true-> crop randomly the samples of the dataset (celebA only)
    -- Parameters for conditioned GAN
-   trainWrongY = true   -- explicitly train discriminator with real images and wrong Y
+   trainWrongY = true   -- explicitly train discriminator with real images and wrong Y (mismatching Y)
 }
 
 -- one-line argument parser. parses enviroment variables to override the defaults
@@ -206,6 +206,11 @@ if opt.display then disp = require 'display' end
 
 local noise_vis = Z:clone()
 
+if string.lower(opt.dataset) == 'celeba' then
+    -- Use attributes from the training set to display higher quality samples.
+    local _, yTmp , _ = data:getBatch()
+    Y_vis:copy(yTmp[{{1,opt.batchSize},{}}])
+end
 for i=1,opt.batchSize do
   Y_vis[{{i},{((i-1)%ny)+1}}] = 1
 end
