@@ -1,12 +1,13 @@
 # Folders that contain data
-mnist/images
+mnist
 celebA
 lfw
 checkpoints
 cache
-images
 # Images
-*.png
+images/celebA
+images/mnist
+gif
 # Large files
 *.dmp
 # Eclipse files
