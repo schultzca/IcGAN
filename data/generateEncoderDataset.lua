@@ -59,6 +59,7 @@ local function readCelebaLabels(labelPath, nSamples)
     -- Index of the attributes from celebA that will be ignored
     local attrFil = {1,2,3,4,7,8,11,14,15,17,20,24,25,26,28,30,31,35,37,38,39,40}
     local celebaSize = 202599
+    assert(nSamples <= celebaSize-19961, "Error: nSamples ("..nSamples..") can't be greater than "..celebaSize-19961 .." for celebA.")
     local file = io.open(labelPath, 'r')
     
     file:read() -- Skip 1st line
@@ -105,7 +106,7 @@ local function readCelebaLabels(labelPath, nSamples)
     
     local y = torch.Tensor(nSamples, ySize)
     
-    -- We subtract 19961 (test set size) as not to use y from the test set
+    -- We subtract 19961 (test set size) so attributes y from the test set are not used
     local randIdx = torch.randperm(celebaSize-19961):narrow(1,1,nSamples)
     y = imLabels:index(1, randIdx:long())
     
