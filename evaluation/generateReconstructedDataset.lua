@@ -111,7 +111,7 @@ function main()
       tmp = decG:forward{tmpZ, tmpY}
       
       -- Display (optional)
-      if opt.display then disp.image(tmp,{win=0}) end
+      if opt.display == 1 then disp.image(tmp,{win=0}) end
       
       -- Copy reconstructed images to CPU
       outX[{{batch,batch+opt.batchSize-1},{},{},{}}]:copy(tmp)
