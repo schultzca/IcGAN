@@ -108,7 +108,7 @@ local accuracies = torch.FloatTensor(CM:size(1))
 local precisions = accuracies:clone()
 local recalls = accuracies:clone()
 local f1scores = accuracies:clone()
-
+local str_list = {'bald', 'bangs', 'black hair', 'blond', 'brown', 'eyebrows', 'eyeglasses', 'gray', 'makeup', 'male', 'mouth open', 'mustache', 'pale skin', 'receding hairline', 'smiling', 'straight hair', 'wavy hair', 'hat'}
 for i=1, CM:size(1) do 
     local TN = CM[i][1][1]
     local FP = CM[i][1][2]
@@ -122,7 +122,7 @@ for i=1, CM:size(1) do
     
     accuracies[i] = 100*((TP+TN)/(TP+TN+FP+FN))
     f1scores[i] = 2*((precisions[i]*recalls[i]) / (precisions[i]+recalls[i]))
-    print(('Accuracy %d: %.2f%%\tF1Score: %.2f%%'):format(i, accuracies[i],f1scores[i]))
+    print(('%s\t\t Accuracy: %.2f%%\tF1Score: %.2f%%'):format(str_list[i], accuracies[i],f1scores[i]))
 end
 
 -- Filter NaN
