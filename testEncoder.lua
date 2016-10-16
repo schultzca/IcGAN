@@ -5,9 +5,10 @@ disp = require 'display'
 torch.setdefaulttensortype('torch.FloatTensor')
 
 local opt = {
-    batchSize = 64,         -- number of samples to produce
+    batchSize = 500,         -- number of samples to produce
     decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7',--c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G, --c_mnist_-1_1_25_net_G.t7,-- path to the generator network
-    encNet = 'checkpoints/encoder_c_celeba_Yconv1_noTest_7epochs.t7',--'checkpoints/encoder_c_mnist_6epochs.t7' 'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
+    encZnet = 'checkpoints/encoderZ_c_celeba_7epochs.t7',--'checkpoints/encoder_c_mnist_6epochs.t7' 'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
+    encYnet = 'checkpoints/Anet2_celebA_5epochs.t7',
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,
     customInputImage = 2,  -- 0 = no custom, only generated images used, 1 = load input image, 2 = load multiple input images
@@ -30,8 +31,9 @@ if opt.dataset == 'mnist' then ny = 10
 elseif opt.dataset == 'celebA' then ny = 18 end
 
 -- Load nets
-local decG = torch.load(opt.decNet)
-local encG = torch.load(opt.encNet)
+local dec = torch.load(opt.decNet)
+local encZ = torch.load(opt.encZnet)
+local encY = torch.load(opt.encYnet)
 
 --[[ Noise to image (decoder GAN) ]]--
 local inputZ = torch.Tensor(opt.batchSize, opt.nz, 1, 1)
@@ -48,34 +50,37 @@ if opt.gpu > 0 then
     require 'cunn'
     require 'cudnn'
     inputZ = inputZ:cuda(); inputY = inputY:cuda()
-    cudnn.convert(decG, cudnn)
-    decG:cuda()
+    cudnn.convert(dec, cudnn)
+    dec:cuda()
 else
-   decG:float()
+   dec:float()
 end
-decG:evaluate()
-encG:evaluate()
+dec:evaluate()
+encZ:evaluate()
+encY:evaluate()
 
 local sampleInput = {inputZ:narrow(1,1,2), inputY:narrow(1,1,2)}
 -- a function to setup double-buffering across the network.
 -- this drastically reduces the memory needed to generate samples
-optnet.optimizeMemory(decG, sampleInput)
+optnet.optimizeMemory(dec, sampleInput)
 
 -- Clone is needed, otherwise next forward call will overwrite inputX
-local inputX = decG:forward{inputZ, inputY}:clone()
+local inputX = dec:forward{inputZ, inputY}:clone()
 print('Images size: ', inputX:size(1)..' x '..inputX:size(2) ..' x '..inputX:size(3)..' x '..inputX:size(4))
 --[[ Image to noise (encoder GAN) ]]--
 -- Output noise should be equal to input noise
 
 if opt.gpu > 0 then
-    encG:cuda()
+    encZ:cuda()
     inputX = inputX:cuda()
+    encY:cuda()
 else
-    encG:float()
+    encZ:float()
+    encY:float()
 end
 
-local output = encG:forward(inputX)
-local outZ = output[1]; local outY = output[2]
+local outY = encY:forward(inputX)
+local outZ = encZ:forward(inputX)
 
 print("Are input and output Z equal? ", torch.all(inputZ:eq(outZ)))
 print('\tInput Z:  Mean, Stdv, Min, Max', inputZ:mean(), inputZ:std(), inputZ:min(), inputZ:max())
@@ -123,9 +128,12 @@ if opt.customInputImage > 0 then
       inputX = inputX:cuda()
     end
     
-    -- Encode it to noise Z
-    output = encG:forward(inputX)
-    local outZ = output[1]; local outY = output[2]
+    -- Encode image to attribute vector Y
+    local outY = encY:forward(inputX)
+    
+    -- Encode image to latent representation Z
+    outZ = encZ:forward(inputX)
+    
 end
 
 outZ:resize(outZ:size(1), outZ:size(2), 1, 1)
@@ -156,12 +164,12 @@ if opt.threshold then
   end
 end
 -- Decode it to an output image X2
-local outX = decG:forward{outZ, outY}
+local outX = dec:forward{outZ, outY}
 local combinedX = torch.Tensor(opt.batchSize*2, outX:size(2), outX:size(3), outX:size(4))
 local j = 1
 for i=1,opt.batchSize*2,2 do
-    combinedX[{{i},{},{},{}}]:copy(inputX[{{j},{},{},{}}])
-    combinedX[{{i+1},{},{},{}}]:copy(outX[{{j},{},{},{}}])
+    combinedX[{{i}}]:copy(inputX[{{j}}])
+    combinedX[{{i+1}}]:copy(outX[{{j}}])
     j = j + 1
 end
 -- Display input and output image
