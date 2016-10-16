@@ -10,11 +10,11 @@ require "lfs"
 require "io"
 local optnet = require 'optnet'
 torch.setdefaulttensortype('torch.FloatTensor')
---torch.manualSeed(123) -- This only works if gpu == 0
+torch.manualSeed(123) -- This only works if gpu == 0
 
 local function getParameters()
   local opt = {
-    samples = 202599,          -- total number of samples to generate
+    samples = 202599-19961,          -- total number of samples to generate
     batchSize = 256,         -- number of samples to produce at the same time
     noisetype = 'normal',  -- type of noise distribution (uniform / normal).
     net = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7',-- path to the generator network
@@ -107,7 +107,8 @@ local function readCelebaLabels(labelPath, nSamples)
     local y = torch.Tensor(nSamples, ySize)
     
     -- We subtract 19961 (test set size) so attributes y from the test set are not used
-    local randIdx = torch.randperm(celebaSize-19961):narrow(1,1,nSamples)
+    local randIdx = torch.randperm(celebaSize-19961):narrow(1,1,nSamples)--+celebaSize-19961
+    --local randIdx = torch.linspace(1,19961,19961):narrow(1,1,nSamples)+celebaSize-19961
     y = imLabels:index(1, randIdx:long())
     
     return y
