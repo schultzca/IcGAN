@@ -1,7 +1,7 @@
 -- This code is used to create a dataset of reconstructed images from the test set.
--- Given a path to a file containing the images X from the dataset and its labels Y,
+-- Given a path to a file containing the images X from the dataset and its real labels Y,
 -- it encodes and decodes those images and creates a file with the reconstructed images X'
--- and the original labels Y. Then, this dataset will be used in testAnet.lua to evaluate
+-- and the original labels Y. Then, this dataset will be used in evaluateModel.lua to evaluate
 -- whether or not the reconstructed images keep the original attribute information.
 
 require 'image'
@@ -15,12 +15,13 @@ local function getParameters()
   local opt = {
       batchSize = 18,
       decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7',--c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G, --c_mnist_-1_1_25_net_G.t7,-- path to the generator network
-      encNet = 'checkpoints/encoder_c_celeba_Yconv1_noTest_7epochs.t7',--'checkpoints/encoder_c_mnist_6epochs.t7' 'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
+      encZnet = 'checkpoints/encoderZ_c_celeba_7epochs.t7',--'checkpoints/encoder_c_mnist_6epochs.t7' 'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
+      encYnet = 'checkpoints/Anet2_celebA_5epochs.t7',
       gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
       display = 0,
       nz = 100,
       path = 'celebA/',
-      outputFolder = 'celebA/c_Yconv3_reconstructedDataset/', -- path where the dataset will be stored
+      outputFolder = 'celebA/reconstructedDataset/', -- path where the dataset will be stored
       threshold = true, -- threshold Y vectors to binary or not
   }
   
@@ -33,9 +34,9 @@ end
 
 local function readDataset(path)
 -- There's expected to find in path a file named im_and_labels_test_set.dmp
--- which contains the images X and attribute vectors Y.
+-- which contains *test* images X and their attribute vectors Y.
 
-  print('Loading '..path..'im_and_labels_test_set.dmp') -- Change to images.dmp
+  print('Loading '..path..'im_and_labels_test_set.dmp')
   local data = torch.load(path..'im_and_labels_test_set.dmp')
   local X = data.X
   local Y = data.Y
@@ -63,8 +64,9 @@ function main()
   createFolder(opt.outputFolder)
   
   -- Load nets
-  local decG = torch.load(opt.decNet)
-  local encG = torch.load(opt.encNet) 
+  local dec = torch.load(opt.decNet)
+  local encZ = torch.load(opt.encZnet) 
+  local encY = torch.load(opt.encYnet)
   
   -- Load data
   local inputX, Y = readDataset(opt.path)
@@ -83,38 +85,43 @@ function main()
     
   -- CPU to GPU  
   if opt.gpu > 0 then
-     cudnn.convert(decG, cudnn)
-     decG:cuda()
-     encG:cuda()
+     cudnn.convert(dec, cudnn)
+     dec:cuda()
+     encZ:cuda()
+     encY:cuda()
      batchX = batchX:cuda()
   else
-     decG:float()
-     encG:float()
+     dec:float()
+     encZ:float()
+     encY:float()
   end
   
-  decG:evaluate()
-  encG:evaluate()
+  dec:evaluate()
+  encZ:evaluate()
+  encY:evaluate()
    
   -- Initiate main loop
   for batch = 1, nSamples-opt.batchSize+1, opt.batchSize  do
       -- Assign batch
       batchX:copy(inputX[{{batch,batch+opt.batchSize-1},{},{},{}}])
       
-      -- Encode images
-      local tmp = encG:forward(batchX)
-      local tmpZ  = tmp[1]; local tmpY = tmp[2];
+      -- Encode images X to attribute vectors Y with encY
+      local tmpY = encY:forward(batchX)
+      
+      -- Encode images X to a latent representation Z with encZ
+      local tmpZ = encZ:forward(batchX)
       
       -- Adapt dimensionality of Z
       tmpZ:resize(tmpZ:size(1), tmpZ:size(2), 1, 1)
       
       -- Decode images
-      tmp = decG:forward{tmpZ, tmpY}
+      local tmp = dec:forward{tmpZ, tmpY}
       
       -- Display (optional)
       if opt.display == 1 then disp.image(tmp,{win=0}) end
       
       -- Copy reconstructed images to CPU
-      outX[{{batch,batch+opt.batchSize-1},{},{},{}}]:copy(tmp)
+      outX[{{batch,batch+opt.batchSize-1}}]:copy(tmp)
 
       print(("%4d / %4d"):format(math.floor(batch / opt.batchSize), math.floor(nSamples / opt.batchSize)))
   end
@@ -125,6 +132,8 @@ function main()
   outputData.Y = Y
   
   torch.save(opt.outputFolder..'groundtruth.dmp', outputData)
+  
+  print('Done.')
   
 end
 
