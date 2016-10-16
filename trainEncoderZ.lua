@@ -72,17 +72,6 @@ local function splitTrainTest(x, z, split)
     return xTrain, zTrain, xTest, zTest
 end
 
-local function weights_init(m)
-   local name = torch.type(m)
-   if name:find('Convolution') then
-      m.weight:normal(0.0, 0.02)
-      m.bias:fill(0)
-   elseif name:find('BatchNormalization') then
-      if m.weight then m.weight:normal(1.0, 0.02) end
-      if m.bias then m.bias:fill(0) end
-   end
-end
-
 local function getEncoderVAE_GAN(sample, nFiltersBase, outputSize, nConvLayers)
   -- Encoder architecture taken from Autoencoding beyond pixels using a learned similarity metric (VAE/GAN hybrid)
   -- Zsz: size of the output vector Z
@@ -186,19 +175,15 @@ local function getEncoderALI(sample, nFiltersBase, Zsz, Ysz)
     return encoder, criterion
 end
 
-local function assignBatches(batchX, batchZ, x, z, tmpX, tmpZ, batch, batchSize, shuffle)
+local function assignBatches(batchX, batchZ, x, z, batch, batchSize, shuffle)
     
     data_tm:reset(); data_tm:resume()
     
-    local idx = 1
-    for i = batch, batch+batchSize-1 do -- Haven't found a way to do this without a for loop and tmp variables
-         tmpX[idx] = x[{{shuffle[i]},{},{},{}}]
-         tmpZ[idx] = z[{{shuffle[i]},{},{},{}}]
-         idx = idx + 1
-    end
+    batchX:copy(x:index(1, shuffle[{{batch,batch+batchSize-1}}]:long()))
+    batchZ:copy(z:index(1, shuffle[{{batch,batch+batchSize-1}}]:long()))
+    
     data_tm:stop()
-    batchX:copy(tmpX)
-    batchZ:copy(tmpZ)
+    
     
     return batchX, batchZ
 end
@@ -245,7 +230,6 @@ function main()
   
   -- Set network architecture
   local encoder, criterion = getEncoderVAE_GAN(xTrain[1], opt.nf, zTrain:size(2), opt.nConvLayers)
-  --encoder:apply(weights_init)
  
   -- Initialize batches
   local batchX = torch.Tensor(opt.batchSize, xTrain:size(2), xTrain:size(3), xTrain:size(4))
@@ -291,8 +275,6 @@ function main()
   
   local nTrainSamples = xTrain:size(1)
   local nTestSamples = xTest:size(1)
-  local tmpX = torch.Tensor(batchX:size())
-  local tmpZ = torch.Tensor(batchZ:size())
   
   -- Initialize display configuration (if enabled)
   local errorData, errorDispConfig = displayConfig(opt.display, opt.name)
@@ -310,7 +292,7 @@ function main()
           batchX:copy(xTrain[{{batch,splitInd}}])
           batchY:copy(yTrain[{{batch,splitInd}}])--]]
           
-          batchX, batchZ = assignBatches(batchX, batchZ, xTrain, zTrain, tmpX, tmpZ, batch, opt.batchSize, shuffle)
+          batchX, batchZ = assignBatches(batchX, batchZ, xTrain, zTrain, batch, opt.batchSize, shuffle)
           
           if opt.display == 2 and batchIterations % 20 == 0 then
               display.image(image.toDisplayTensor(batchX,0,torch.round(math.sqrt(opt.batchSize))), {win=2, title='Train mini-batch'})
@@ -322,7 +304,7 @@ function main()
           -- Display train and test error
           if opt.display and batchIterations % 20 == 0 then
               -- Test error
-              batchX, batchZ = assignBatches(batchX, batchZ, xTest, zTest, tmpX, tmpZ, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
+              batchX, batchZ = assignBatches(batchX, batchZ, xTest, zTest, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
               local outputs = encoder:forward(batchX)
               errorTest = criterion:forward(outputs, batchZ)
               table.insert(errorData,
