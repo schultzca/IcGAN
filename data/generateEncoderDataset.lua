@@ -10,25 +10,12 @@ require "lfs"
 require "io"
 local optnet = require 'optnet'
 torch.setdefaulttensortype('torch.FloatTensor')
-torch.manualSeed(123) -- This only works if gpu == 0
+torch.manualSeed(123)
 
 local function getParameters()
-  local opt = {
-    samples = 202599-19961,          -- total number of samples to generate
-    batchSize = 256,         -- number of samples to produce at the same time
-    noisetype = 'normal',  -- type of noise distribution (uniform / normal).
-    net = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7',-- path to the generator network
-    imsize = 1,            -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px,
-    gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,              -- size of noise vector
-    outputFolder = 'celebA/c_Yconv1_generatedDataset/', -- path where the dataset will be stored
-    outputFormat = 'binary', -- (binary | ascii) binary is faster, but platform-dependent.
-    storeAsTensor = true,    -- true -> store images as tensor, false -> store images as images (lossy)
-    -- Conditional GAN parameters
-    dataset = 'celebA',     -- mnist | celebA  
-  }
   
-  for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
+  -- Load parameters from config file
+  assert(loadfile("config.lua"))(3)
   
   assert(opt.samples >= opt.batchSize, "Batch size (opt.batchSize) can't be greater than number of samples (opt.samples).")
   

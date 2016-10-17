@@ -75,6 +75,23 @@ opt = {
   poweroff = 0,               -- 1 = power off computer after training, 0 = not power off  
   
   }
+elseif option == 3 then
+-- Generate encoder dataset parameters (generateEncoderDataset.lua)
+opt = {
+    samples = 202599-19961,  -- total number of samples to generate
+    batchSize = 256,         -- number of samples to produce at the same time
+    noisetype = 'normal',    -- type of noise distribution (uniform / normal).
+    net = 'checkpoints/',    -- path to the generator network
+    imsize = 1,              -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px,
+    gpu = 1,                 -- gpu mode. 0 = CPU, 1 = GPU
+    nz = 100,                -- size of noise vector
+    outputFolder = 'celebA/genDataset/', -- path where the dataset will be stored
+    outputFormat = 'binary', -- dataset output format (binary | ascii). Binary is faster, but platform-dependent.
+    storeAsTensor = true,    -- true = store images as tensor (recommended), false = store images as images (lossy)
+    -- Conditional GAN parameters
+    dataset = 'celebA',      -- mnist | celebA  
+  }
+
 else
 
   error("Option not recognized.") 
