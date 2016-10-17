@@ -6,6 +6,7 @@ assert(option, 'Option not specified.')
 if option == 0 then
 -- GAN parameters (trainGAN.lua)
 opt = {
+   name = 'celeba',        -- name used to store the discriminator and generator
    dataset = 'celebA',     -- celebA | mnist
    batchSize = 64,
    loadSize = 64,          -- images will be scaled up/down to this size
@@ -17,7 +18,6 @@ opt = {
    beta1 = 0.5,            -- momentum term of adam
    ntrain = math.huge,     -- #  of examples per epoch. math.huge for full dataset
    gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
-   name = 'celebA',        -- name used to store the discriminator and generator
    noise = 'normal',       -- uniform / normal
    dataRoot = 'celebA',    -- path to the dataset images, except for not mnist. If mnist, just put 'mnist'
    randomCrop = false,     -- true = crop randomly the samples of the dataset (celebA only)
@@ -31,6 +31,50 @@ opt = {
    trainWrongY = true      -- explicitly train discriminator with real images and wrong Y (mismatching Y)
 }
 
+elseif option == 1 then
+-- Encoder Z parameters (trainEncoder.lua)
+opt = {
+  name = 'encoderZ_celeba',    -- name of the encoder
+  type = 'Z',                  -- encoder type. 'Z': encoder Z: image X to latent representation Z | 'Y': encoder Y: image X to attribute vector Y
+  batchSize = 64,
+  outputPath = 'checkpoints/', -- path used to store the encoder network
+  datasetPath = 'celebA/genDataset/', -- folder where the dataset files are stored (not the files themselves)
+                              -- for encoder Z you need the file grountruth.dmp (obtained with data/generateEncoderDataset.lua)
+  split = 0.66,               -- split between train and test (e.g. 0.66 = 66% train, 33% test)
+  nConvLayers = 4,            -- # of convolutional layers on the net
+  nf = 32,                    -- # of filters in hidden layer
+  FCsz = nil,                 -- size of the last fully connected layer. If nil, size will be the same as previous FC layer.
+  nEpochs = 15,               -- # of epochs
+  lr = 0.0001,                -- initial learning rate for adam
+  beta1 = 0.1,                -- momentum term of adam
+  gpu = 1,                     -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
+  -- Miscellaneous
+  display = 1,                -- display 1 = train and test error, 2 = error + batch input images, 0 = false
+  poweroff = 0,               -- 1 = power off computer after training, 0 = not power off
+        
+  }
+elseif option == 2 then
+-- Encoder Y parameters (trainEncoder.lua)
+opt = {
+  name = 'encoderY_c_celeba',  -- name of the encoder
+  type = 'Y',                  -- encoder type. 'Z': encoder Z: image X to latent representation Z | 'Y': encoder Y: image X to attribute vector Y
+  batchSize = 64,
+  outputPath = 'checkpoints/', -- path used to store the encoder network
+  datasetPath = 'celebA/genDataset/', -- folder where the dataset files are stored (not the files themselves)
+                              -- for encoder Y you need the file images.dmp (data/preprocess_celebA.lua) and imLabels.dmp (data/donkey_celebA.lua)
+  split = 0.66,               -- split between train and test (e.g. 0.66 = 66% train, 33% test)
+  nConvLayers = 4,            -- # of convolutional layers on the net
+  nf = 32,                    -- # of filters in hidden layer
+  FCsz = 512,                 -- size of the last fully connected layer. If nil, size will be the same as previous FC layer.
+  nEpochs = 15,               -- # of epochs
+  lr = 0.0001,                -- initial learning rate for adam
+  beta1 = 0.1,                -- momentum term of adam
+  gpu = 1,                     -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
+  -- Miscellaneous
+  display = 1,                -- display 1 = train and test error, 2 = error + batch input images, 0 = false
+  poweroff = 0,               -- 1 = power off computer after training, 0 = not power off  
+  
+  }
 else
 
   error("Option not recognized.") 
