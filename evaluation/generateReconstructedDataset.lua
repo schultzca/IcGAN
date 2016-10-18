@@ -12,18 +12,9 @@ require 'lfs'
 torch.setdefaulttensortype('torch.FloatTensor')
 
 local function getParameters()
-  local opt = {
-      batchSize = 18,
-      decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7',--c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G, --c_mnist_-1_1_25_net_G.t7,-- path to the generator network
-      encZnet = 'checkpoints/encoderZ_c_celeba_7epochs.t7',--'checkpoints/encoder_c_mnist_6epochs.t7' 'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
-      encYnet = 'checkpoints/Anet2_celebA_5epochs.t7',
-      gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
-      display = 0,
-      nz = 100,
-      path = 'celebA/',
-      outputFolder = 'celebA/reconstructedDataset/', -- path where the dataset will be stored
-      threshold = true, -- threshold Y vectors to binary or not
-  }
+
+  -- Load parameters from config file
+  assert(loadfile("config.lua"))(4)
   
   if opt.gpu > 0 then
       require 'cunn'

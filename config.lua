@@ -76,7 +76,7 @@ opt = {
   
   }
 elseif option == 3 then
--- Generate encoder dataset parameters (generateEncoderDataset.lua)
+-- Generate encoder dataset parameters necessary to train the encoder Z (generateEncoderDataset.lua)
 opt = {
     samples = 202599-19961,  -- total number of samples to generate
     batchSize = 256,         -- number of samples to produce at the same time
@@ -84,7 +84,7 @@ opt = {
     net = 'checkpoints/',    -- path to the generator network
     imsize = 1,              -- used to produce larger images. 1 = 64px. 2 = 80px, 3 = 96px,
     gpu = 1,                 -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,                -- size of noise vector
+    nz = 100,                -- size of Z vector
     outputFolder = 'celebA/genDataset/', -- path where the dataset will be stored
     outputFormat = 'binary', -- dataset output format (binary | ascii). Binary is faster, but platform-dependent.
     storeAsTensor = true,    -- true = store images as tensor (recommended), false = store images as images (lossy)
@@ -92,6 +92,20 @@ opt = {
     dataset = 'celebA',      -- mnist | celebA  
   }
 
+elseif option == 4 then
+-- Generate reconstructed dataset parameters to evaluate the whole model (generateReconstructedDataset.lua)
+opt = {
+      batchSize = 18,
+      decNet = 'checkpoints/',  -- path to generator network
+      encZnet = 'checkpoints/', -- path to encoder Z network
+      encYnet = 'checkpoints/', -- path to encoder Y network
+      gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
+      display = 0,              -- 1 = display output reconstructed images, 0 = not display
+      nz = 100,                 -- size of Z vector
+      path = 'celebA/',         -- path to folder where a file named im_and_labels_test_set.dmp contains *test* images and their attribute vectors Y.
+      outputFolder = 'celebA/recDataset/', -- path where the dataset will be stored
+      threshold = true,         -- threshold Y vectors to binary or not
+  }
 else
 
   error("Option not recognized.") 
