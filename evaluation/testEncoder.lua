@@ -4,19 +4,8 @@ optnet = require 'optnet'
 disp = require 'display'
 torch.setdefaulttensortype('torch.FloatTensor')
 
-local opt = {
-    batchSize = 500,         -- number of samples to produce
-    decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7',--c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G, --c_mnist_-1_1_25_net_G.t7,-- path to the generator network
-    encZnet = 'checkpoints/encoderZ_c_celeba_7epochs.t7',--'checkpoints/encoder_c_mnist_6epochs.t7' 'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
-    encYnet = 'checkpoints/Anet2_celebA_5epochs.t7',
-    gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,
-    customInputImage = 2,  -- 0 = no custom, only generated images used, 1 = load input image, 2 = load multiple input images
-    customImagesPath = 'celebA/img_align_test/', --'mnist/images', -- path used when customInputImage is 1 (path to single image) or 2 (path to folder with images)
-    -- Conditional GAN parameters
-    dataset = 'celebA', -- celebA | mnist
-    threshold = true, -- threshold Y vectors to binary or not
-}
+-- Load parameters from testConfig file
+  assert(loadfile("cfg/testConfig.lua"))(0)
 --torch.manualSeed(123)
 
 local extensionList = {'jpg', 'png','JPG','PNG','JPEG', 'ppm', 'PPM', 'bmp', 'BMP'}
