@@ -21,10 +21,15 @@ opt = {
 }
 
 elseif option == 1 then
--- Encoder Z parameters (trainEncoder.lua)
+-- Evaluate model parameters (evaluation/evaluateModel.lua)
+opt = {
+    batchSize = 64,
+    net = 'checkpoints/',     -- path to the Attribute Predictor network (encoder Y: given an image X, outputs the conditional info Y).
+    gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
+    testSetPath = 'celebA/',  -- path to file containing reconstructed images X to and the conditional info Y of the *original* images (not the reconstructed)
+}
 
 elseif option == 2 then
--- Generate encoder dataset parameters necessary to train the encoder Z (generateEncoderDataset.lua)
 
 elseif option == 3 then
 

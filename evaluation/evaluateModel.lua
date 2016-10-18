@@ -4,13 +4,7 @@ optnet = require 'optnet'
 disp = require 'display'
 torch.setdefaulttensortype('torch.FloatTensor')
 
-local opt = {
-    batchSize = 64,         -- number of samples to produce
-    net = 'checkpoints/Anet2_celebA_5epochs.t7',-- path to the network
-    gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,
-    testSetPath = 'celebA/im_and_labels_test_set.dmp',  -- path to file containing the images X to and labels Y
-}
+assert(loadfile("cfg/testConfig.lua"))(1)
 torch.manualSeed(123)
 
 local extensionList = {'jpg', 'png','JPG','PNG','JPEG', 'ppm', 'PPM', 'bmp', 'BMP'}
