@@ -173,11 +173,12 @@ for i=1,opt.batchSize*2,2 do
     j = j + 1
 end
 -- Display input and output image
-disp.image(inputX, {title='Input image'})
-disp.image(outX, {title='Encoded and decoded image'})
-print("Are input and output images equal? ", torch.all(inputX:eq(outX)))
-image.save('inputImage.png', image.toDisplayTensor(inputX,0,torch.round(math.sqrt(opt.batchSize))))
-image.save('reconstructedImage.png', image.toDisplayTensor(outX,0,torch.round(math.sqrt(opt.batchSize))))
-image.save('encoder_reconstr_comparison.png', image.toDisplayTensor(combinedX,0,2,true))
+disp.image(image.toDisplayTensor(combinedX,0,2,true), {title='Reconstructed images'})
+
+if opt.saveIm == true then
+    image.save('inputImage.png', image.toDisplayTensor(inputX,0,torch.round(math.sqrt(opt.batchSize))))
+    image.save('reconstructedImage.png', image.toDisplayTensor(outX,0,torch.round(math.sqrt(opt.batchSize))))
+    image.save('encoder_reconstr_comparison.png', image.toDisplayTensor(combinedX,0,2,true))
+end
 
 
