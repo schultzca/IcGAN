@@ -20,9 +20,9 @@ local function getParameters()
   
   -- Load parameters from config file
   if string.upper(opt.type)=='Z' then
-      assert(loadfile("config.lua"))(1)
+      assert(loadfile("cfg/mainConfig.lua"))(1)
   else
-      assert(loadfile("config.lua"))(2)
+      assert(loadfile("cfg/mainConfig.lua"))(2)
   end
   
   if opt.display then display = require 'display' end

@@ -15,7 +15,7 @@ torch.manualSeed(123)
 local function getParameters()
   
   -- Load parameters from config file
-  assert(loadfile("config.lua"))(3)
+  assert(loadfile("cfg/mainConfig.lua"))(3)
   
   assert(opt.samples >= opt.batchSize, "Batch size (opt.batchSize) can't be greater than number of samples (opt.samples).")
   

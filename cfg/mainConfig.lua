@@ -1,4 +1,4 @@
--- ==CONFIGURATION FILE==
+-- ==CONFIGURATION FILE FOR TRAINING==
 local option = ... -- the argument is received as varargs, hence the ...
 
 assert(option, 'Option not specified.')
@@ -69,7 +69,7 @@ opt = {
   nEpochs = 15,               -- # of epochs
   lr = 0.0001,                -- initial learning rate for adam
   beta1 = 0.1,                -- momentum term of adam
-  gpu = 1,                     -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
+  gpu = 1,                    -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
   -- Miscellaneous
   display = 1,                -- display 1 = train and test error, 2 = error + batch input images, 0 = false
   poweroff = 0,               -- 1 = power off computer after training, 0 = not power off  
@@ -97,7 +97,7 @@ elseif option == 4 then
 opt = {
       batchSize = 18,
       decNet = 'checkpoints/',  -- path to generator network
-      encZnet = 'checkpoints/', -- path to encoder Z network
+      encZnet = 'checkpoints/', --'checkpoints/encoder_c_mnist_6epochs.t7' -- path to encoder Z network
       encYnet = 'checkpoints/', -- path to encoder Y network
       gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
       display = 0,              -- 1 = display output reconstructed images, 0 = not display

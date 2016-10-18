@@ -3,7 +3,7 @@ require 'nn'
 require 'optim'
 
 -- Load parameters from config file
-assert(loadfile("config.lua"))(0)
+assert(loadfile("cfg/mainConfig.lua"))(0)
 
 -- one-line argument parser. parses enviroment variables to override the defaults
 for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
