@@ -1,5 +1,6 @@
 -- ==CONFIGURATION FILE FOR IMAGE GENERATION==
 local option = ... -- the argument is received as varargs, hence the ...
+local commonParameters
 
 assert(option, 'Option not specified.')
 
@@ -19,42 +20,52 @@ opt = {
     dataset = 'celebA'        -- dataset specification: mnist | celebA. It is necessary to know how to sample Y.          
 }
 
-elseif option == 1 then
--- Reconstruct images with encoder + generator and obtain variations on them (generation/reconstructWithVariations.lua)
-opt = {
-    nImages = 50,             -- number of samples to produce (only valid if loadOption != 1)
-    decNet = 'checkpoints/',  -- path to the generator network
-    encZnet = 'checkpoints/', -- path to encoder Z network
-    encYnet = 'checkpoints/', -- path to encoder Y network
-    gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,                 -- Z latent vector length 
-    loadOption = 2,           -- 0 = only generated images used, 1 = load input image, 2 = load multiple input images
-    loadPath = '',            -- loadOption == 1: path to single image, loadOption==2: path to folder with images
-    name = 'encoder_disentangle', -- name of output image
-    -- Conditional GAN parameters
-    dataset = 'celebA',       -- dataset specification: mnist | celebA. It is necessary to know how to sample Y. 
-    threshold = true,         -- (celebA only) true= threshold original encoded Y to binary 
-}
-
-
-elseif option == 2 then
--- Attribute transfer: given two images, swap their attribute information Y (generation/attributeTransfer.lua)
-opt = {
-    im1Path = '',
-    im2Path = '',
-    decNet = 'checkpoints/',  -- path to generator network
-    encZnet = 'checkpoints/', -- path to encoder Z network
-    encYnet = 'checkpoints/', -- path to encoder Y network
-    gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,                 -- Z latent vector length
-}
-
-
-elseif option == 3 then
--- Interpolate between two input images (generation/interpolate.lua)
-
 else
 
-  error("Option not recognized.") 
+  -- Commom parameters for options 1 to 3
+  commonParameters = {
+      decNet = 'checkpoints/',  -- path to the generator network
+      encZnet = 'checkpoints/', -- path to encoder Z network
+      encYnet = 'checkpoints/', -- path to encoder Y network
+      gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
+      nz = 100,                 -- Z latent vector length 
+  }
+  
+  if option == 1 then
+  -- Reconstruct images with encoder + generator and obtain variations on them (generation/reconstructWithVariations.lua)
+  opt = {
+      nImages = 50,             -- number of samples to produce (only valid if loadOption != 1)
+      loadOption = 2,           -- 0 = only generated images used, 1 = load input image, 2 = load multiple input images
+      loadPath = '', -- loadOption == 1: path to single image, loadOption==2: path to folder with images
+      name = 'encoder_disentangle',
+      -- Conditional GAN parameters
+      dataset = 'celebA',       -- dataset specification: mnist | celebA. It is necessary to know how to sample Y. 
+      threshold = true,         -- (celebA only) true= threshold original encoded Y to binary 
+  }
+  
+  elseif option == 2 then
+  -- Attribute transfer: given two images, swap their attribute information Y (generation/attributeTransfer.lua)
+  opt = {
+      im1Path = '', -- path to image 1
+      im2Path = '', -- path to image 2
+  }
+  
+  elseif option == 3 then
+  -- Interpolate between two input images (generation/interpolate.lua)
+  opt = {
+      im1Path = '', -- path to image 1
+      im2Path = '', -- path to image 2
+      nInterpolations = 4,
+  }
+  
+  else
+  
+    error("Option not recognized.") 
+  
+  end
+  
+  -- Merge tables
+  for k,v in pairs(commonParameters) do opt[k] = v end
 
 end
+
