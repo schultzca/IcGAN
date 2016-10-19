@@ -42,10 +42,11 @@ elseif option == 2 then
 opt = {
     im1Path = '',
     im2Path = '',
-    decNet = 'checkpoints/',  -- path to the generator network
-    encNet = 'checkpoints/',  -- path to the encoder network
+    decNet = 'checkpoints/',  -- path to generator network
+    encZnet = 'checkpoints/', -- path to encoder Z network
+    encYnet = 'checkpoints/', -- path to encoder Y network
     gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,                 -- Z latent vector length 
+    nz = 100,                 -- Z latent vector length
 }
 
 

@@ -40,7 +40,8 @@ local ny = 18 -- Y label length. This depends on the dataset. 18 for CelebA
 
 -- Load nets
 local generator = torch.load(opt.decNet)
-local encoder = torch.load(opt.encNet)
+local encZ = torch.load(opt.encZnet)
+local encY = torch.load(opt.encYnet)
 
 local imgSz = {generator.output:size()[2], generator.output:size()[3], generator.output:size()[4]}
 
@@ -57,17 +58,17 @@ inputX:mul(2):add(-1) -- change [0, 1] to [-1, 1]
 if opt.gpu > 0 then
     inputX = inputX:cuda(); Z = Z:cuda(); Y = Y:cuda()
     cudnn.convert(generator, cudnn)
-    cudnn.convert(encoder, cudnn)
-    generator:cuda(); encoder:cuda()
+    cudnn.convert(encZ, cudnn); cudnn.convert(encY, cudnn)
+    generator:cuda(); encZ:cuda(); encY:cuda()
 else
-    generator:float(); encoder:float()
+    generator:float(); encZ:float(); encY:float()
 end
 
 generator:evaluate()
-encoder:evaluate()
+encZ:evaluate(); encY:evaluate()
 
-local encOutput = encoder:forward(inputX)
-local tmpZ = encOutput[1]; local tmpY = encOutput[2]
+local tmpZ = encZ:forward(inputX)
+local tmpY = encY:forward(inputX)
 tmpZ:resize(tmpZ:size(1), tmpZ:size(2), 1, 1)
 
 Z[{{1,2},{},{},{}}]:copy(tmpZ); Y[{{1,2},{}}]:copy(tmpY)
