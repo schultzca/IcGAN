@@ -5,17 +5,18 @@ disp = require 'display'
 torch.setdefaulttensortype('torch.FloatTensor')
 
 local opt = {
-    nImages = 50,         -- number of samples to produce (only valid if loadOption != 1)
+    nImages = 50,             -- number of samples to produce (only valid if loadOption != 1)
     decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7', --'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
-    encNet = 'checkpoints/encoder_c_celeba_Yconv1_noTest_7epochs.t7', --'checkpoints/encoder_c_celeba_Yconv1_noTanh_20epochs.t7',--'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
-    gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,
-    loadOption = 2,  -- 0 = only generated images used, 1 = load input image, 2 = load multiple input images
-    loadPath = 'celebA/img_align_test', --'mnist/images', -- path used when load is 1 (path to single image) or 2 (path to folder with images)
+    encZnet = 'checkpoints/encoderZ_c_celeba_7epochs.t7',-- path to encoder Z network
+    encYnet = 'checkpoints/Anet2_celebA_5epochs.t7', -- path to encoder Y network
+    gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
+    nz = 100,                 -- Z latent vector length 
+    loadOption = 2,           -- 0 = only generated images used, 1 = load input image, 2 = load multiple input images
+    loadPath = 'celebA/img_align_test', --'mnist/images', -- loadOption == 1: path to single image, loadOption==2: path to folder with images
     name = 'encoder_disentangle',
     -- Conditional GAN parameters
-    dataset = 'celebA',
-    threshold = true, -- (celebA only) true: threshold original encoded Y to binary 
+    dataset = 'celebA',       -- dataset specification: mnist | celebA. It is necessary to know how to sample Y. 
+    threshold = true,         -- (celebA only) true= threshold original encoded Y to binary 
 }
 
 local function applyThreshold(Y, th)
@@ -100,7 +101,7 @@ local function sampleY(outY, dataset, threshold, inY)
           end
       end
   else
-      -- Case of MNIST and other generic datasets
+      -- Case of MNIST and other generic datasets with one-hot vectors.
       for i=1,nSamples do
           outY[{{i},{((i-1)%ny)+1}}] = 1
       end 
@@ -140,7 +141,6 @@ local function obtainImageSet(X, path, option, extension)
     return X
 end
 
-
 if opt.gpu > 0 then
     require 'cunn'
     require 'cudnn'
@@ -155,26 +155,26 @@ elseif string.lower(opt.dataset) == 'celeba' then ny = 18; imgExtension = '.jpg'
 
 -- Load nets
 local generator = torch.load(opt.decNet)
-local encoder = torch.load(opt.encNet)
+local encZ = torch.load(opt.encZnet)
+local encY = torch.load(opt.encYnet)
 
 local imgSz = {generator.output:size()[2], generator.output:size()[3], generator.output:size()[4]}
 
 local inputX = torch.Tensor(opt.nImages, imgSz[1], imgSz[2], imgSz[3]):zero()
-local Z = torch.Tensor(opt.nImages, opt.nz, 1, 1)
-local Y = torch.Tensor(opt.nImages, ny):fill(-1)
 
 -- Load to GPU
 if opt.gpu > 0 then
-    Z = Z:cuda(); Y = Y:cuda()
     cudnn.convert(generator, cudnn)
-    cudnn.convert(encoder, cudnn)
-    generator:cuda(); encoder:cuda()
+    cudnn.convert(encZ, cudnn)
+    cudnn.convert(encY, cudnn)
+    generator:cuda(); encZ:cuda(); encY:cuda()
 else
-    generator:float(); encoder:float()
+    generator:float(); encZ:float(); encY:cuda()
 end
 
 generator:evaluate()
-encoder:evaluate()
+encZ:evaluate()
+encY:evaluate()
 
 -- Load / generate X
 if opt.loadOption == 0 then
@@ -188,8 +188,9 @@ else
   if opt.gpu > 0 then inputX = inputX:cuda() end
 end
 
-local encOutput = encoder:forward(inputX)
-Z = encOutput[1]; Y = encOutput[2]
+local Z = encZ:forward(inputX)
+local Y = encY:forward(inputX)
+
 Z:resize(Z:size(1), Z:size(2), 1, 1)
 inputX = inputX:float() -- No longer needed in GPU
 
