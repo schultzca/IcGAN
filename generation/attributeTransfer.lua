@@ -1,17 +1,17 @@
+-- Attribute transfer: given two images, swap their attribute information Y
+-- Output image:
+--  1st column: real image
+--  2nd column: reconstructed image
+--  3rd column: reconstructed image with swapped Y
+
 require 'image'
 require 'nn'
 optnet = require 'optnet'
 disp = require 'display'
 torch.setdefaulttensortype('torch.FloatTensor')
 
-local opt = {
-    im1Path = 'celebA/img_align_test/202391.jpg',
-    im2Path = 'celebA/img_align_test/202359.jpg',
-    decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7', --'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
-    encNet = 'checkpoints/encoder_c_celeba_Yconv1_noTest_7epochs.t7', --'checkpoints/encoder_c_celeba_Yconv1_noTanh_20epochs.t7',--'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
-    gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,
-}
+-- Load parameters from config file
+assert(loadfile("cfg/generateConfig.lua"))(2)
 
 local function applyThreshold(Y, th)
     -- Takes a matrix Y and thresholds, given th, to -1 and 1

@@ -39,6 +39,15 @@ opt = {
 
 elseif option == 2 then
 -- Attribute transfer: given two images, swap their attribute information Y (generation/attributeTransfer.lua)
+opt = {
+    im1Path = '',
+    im2Path = '',
+    decNet = 'checkpoints/',  -- path to the generator network
+    encNet = 'checkpoints/',  -- path to the encoder network
+    gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
+    nz = 100,                 -- Z latent vector length 
+}
+
 
 elseif option == 3 then
 -- Interpolate between two input images (generation/interpolate.lua)
