@@ -4,6 +4,7 @@ celebA
 lfw
 checkpoints
 cache
+untracked
 # Images
 images/celebA
 images/mnist
