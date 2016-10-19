@@ -4,16 +4,7 @@ optnet = require 'optnet'
 disp = require 'display'
 torch.setdefaulttensortype('torch.FloatTensor')
 
-local opt = {
-    im1Path = 'celebA/img_align_test/201971.jpg', -- path to image 1
-    im2Path = 'celebA/img_align_test/201979.jpg', -- path to image 2
-    decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7', --'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to generator network
-    encZnet = 'checkpoints/encoderZ_c_celeba_7epochs.t7', -- path to encoder Z network
-    encYnet = 'checkpoints/Anet2_celebA_5epochs.t7',      -- path to encoder Y network
-    gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,
-    nInterpolations = 4,
-}
+assert(loadfile("cfg/generateConfig.lua"))(3)
 
 local function applyThreshold(Y, th)
     -- Takes a matrix Y and thresholds, given th, to -1 and 1
