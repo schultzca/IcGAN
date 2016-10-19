@@ -44,8 +44,6 @@ opt = {
       threshold = true,         -- threshold Y vectors to binary or not
   }
 
-elseif option == 3 then
-
 else
 
   error("Option not recognized.") 
