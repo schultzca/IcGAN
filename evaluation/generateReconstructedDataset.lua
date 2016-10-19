@@ -14,7 +14,7 @@ torch.setdefaulttensortype('torch.FloatTensor')
 local function getParameters()
 
   -- Load parameters from config file
-  assert(loadfile("config.lua"))(4)
+  assert(loadfile("cfg/testConfig.lua"))(2)
   
   if opt.gpu > 0 then
       require 'cunn'

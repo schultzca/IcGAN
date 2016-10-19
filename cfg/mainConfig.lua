@@ -92,20 +92,6 @@ opt = {
     dataset = 'celebA',      -- mnist | celebA  
   }
 
-elseif option == 4 then
--- Generate reconstructed dataset parameters to evaluate the whole model (generateReconstructedDataset.lua)
-opt = {
-      batchSize = 18,
-      decNet = 'checkpoints/',  -- path to generator network
-      encZnet = 'checkpoints/', --'checkpoints/encoder_c_mnist_6epochs.t7' -- path to encoder Z network
-      encYnet = 'checkpoints/', -- path to encoder Y network
-      gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
-      display = 0,              -- 1 = display output reconstructed images, 0 = not display
-      nz = 100,                 -- size of Z vector
-      path = 'celebA/',         -- path to folder where a file named im_and_labels_test_set.dmp contains *test* images and their attribute vectors Y.
-      outputFolder = 'celebA/recDataset/', -- path where the dataset will be stored
-      threshold = true,         -- threshold Y vectors to binary or not
-  }
 else
 
   error("Option not recognized.") 

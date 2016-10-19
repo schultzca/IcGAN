@@ -24,12 +24,25 @@ elseif option == 1 then
 -- Evaluate model parameters (evaluation/evaluateModel.lua)
 opt = {
     batchSize = 64,
-    net = 'checkpoints/',     -- path to the Attribute Predictor network (encoder Y: given an image X, outputs the conditional info Y).
-    gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
-    testSetPath = 'celebA/',  -- path to file containing reconstructed images X to and the conditional info Y of the *original* images (not the reconstructed)
+    net = 'checkpoints/',                               -- path to the Attribute Predictor network (encoder Y: given an image X, outputs the conditional info Y).
+    gpu = 1,                                            -- gpu mode. 0 = CPU, 1 = GPU
+    testSetPath = 'celebA/recDataset/groundtruth.dmp',  -- path to file containing reconstructed images X to and the conditional info Y of the *original* images
 }
 
 elseif option == 2 then
+-- Generate reconstructed dataset (generateReconstructedDataset.lua) parameters to evaluate the whole model with evaluateModel.lua
+opt = {
+      batchSize = 18,
+      decNet = 'checkpoints/',  -- path to generator network
+      encZnet = 'checkpoints/', -- path to encoder Z network
+      encYnet = 'checkpoints/', -- path to encoder Y network
+      gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
+      display = 0,              -- 1 = display output reconstructed images, 0 = not display
+      nz = 100,                 -- size of Z vector
+      path = 'celebA/',         -- path to folder where a file named im_and_labels_test_set.dmp contains *test* images and their attribute vectors Y.
+      outputFolder = 'celebA/recDataset/', -- path where the dataset will be stored
+      threshold = true,         -- threshold Y vectors to binary or not
+  }
 
 elseif option == 3 then
 
