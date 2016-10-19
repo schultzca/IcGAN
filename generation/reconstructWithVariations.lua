@@ -4,20 +4,8 @@ optnet = require 'optnet'
 disp = require 'display'
 torch.setdefaulttensortype('torch.FloatTensor')
 
-local opt = {
-    nImages = 50,             -- number of samples to produce (only valid if loadOption != 1)
-    decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7', --'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
-    encZnet = 'checkpoints/encoderZ_c_celeba_7epochs.t7',-- path to encoder Z network
-    encYnet = 'checkpoints/Anet2_celebA_5epochs.t7', -- path to encoder Y network
-    gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
-    nz = 100,                 -- Z latent vector length 
-    loadOption = 2,           -- 0 = only generated images used, 1 = load input image, 2 = load multiple input images
-    loadPath = 'celebA/img_align_test', --'mnist/images', -- loadOption == 1: path to single image, loadOption==2: path to folder with images
-    name = 'encoder_disentangle',
-    -- Conditional GAN parameters
-    dataset = 'celebA',       -- dataset specification: mnist | celebA. It is necessary to know how to sample Y. 
-    threshold = true,         -- (celebA only) true= threshold original encoded Y to binary 
-}
+-- Load parameters from config file
+assert(loadfile("cfg/generateConfig.lua"))(1)
 
 local function applyThreshold(Y, th)
     -- Takes a matrix Y and thresholds, given th, to -1 and 1
