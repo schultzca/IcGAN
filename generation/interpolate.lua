@@ -7,8 +7,9 @@ torch.setdefaulttensortype('torch.FloatTensor')
 local opt = {
     im1Path = 'celebA/img_align_test/201971.jpg', -- path to image 1
     im2Path = 'celebA/img_align_test/201979.jpg', -- path to image 2
-    decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7', --'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to the generator network
-    encNet = 'checkpoints/encoder_c_celeba_Yconv1_noTest_7epochs.t7', --'checkpoints/encoder_c_celeba_Yconv1_noTanh_20epochs.t7',--'checkpoints/encoder128Filters2FC_dataset2_2_6epochs.t7',
+    decNet = 'checkpoints/c_celebA_64_filt_Yconv1_noTest_wrongYFixed_24_net_G.t7', --'checkpoints/c_celebA_64_filt_Yconv1_25_net_G.t7',--'checkpoints/experiment1_10_net_G.t7',-- path to generator network
+    encZnet = 'checkpoints/encoderZ_c_celeba_7epochs.t7', -- path to encoder Z network
+    encYnet = 'checkpoints/Anet2_celebA_5epochs.t7',      -- path to encoder Y network
     gpu = 1,               -- gpu mode. 0 = CPU, 1 = GPU
     nz = 100,
     nInterpolations = 4,
@@ -41,7 +42,8 @@ local ny = 18 -- Y label length. This depends on the dataset. 18 for CelebA
 
 -- Load nets
 local generator = torch.load(opt.decNet)
-local encoder = torch.load(opt.encNet)
+local encZ = torch.load(opt.encZnet)
+local encY = torch.load(opt.encYnet)
 
 local imgSz = {generator.output:size()[2], generator.output:size()[3], generator.output:size()[4]}
 
@@ -58,18 +60,18 @@ inputX:mul(2):add(-1) -- change [0, 1] to [-1, 1]
 if opt.gpu > 0 then
     inputX = inputX:cuda(); Z = Z:cuda(); Y = Y:cuda()
     cudnn.convert(generator, cudnn)
-    cudnn.convert(encoder, cudnn)
-    generator:cuda(); encoder:cuda()
+    cudnn.convert(encZ, cudnn); cudnn.convert(encY, cudnn)
+    generator:cuda(); encZ:cuda(); encY:cuda()
 else
-    generator:float(); encoder:float()
+    generator:float(); encZ:float(); encY:float()
 end
 
 generator:evaluate()
-encoder:evaluate()
+encZ:evaluate(); encY:evaluate()
 
 -- Encode real images to Z and Y
-local encOutput = encoder:forward(inputX)
-local tmpZ = encOutput[1]; local tmpY = encOutput[2]
+local tmpZ = encZ:forward(inputX)
+local tmpY = encY:forward(inputX)
 
 applyThreshold(tmpY,0)
 
