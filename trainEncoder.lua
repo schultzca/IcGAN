@@ -14,8 +14,8 @@ local function getParameters()
   -- Type of encoder must be passed as argument to decide what kind of
   -- encoder will be trained (encoder Z [type Z] or encoder Y [type Y])
   opt.type = os.getenv('type')
-  opt.type = 'z'
-  assert(opt.type, "Parameter 'type' not specified. It is necessary to set the encoder type: 'Z' or 'Y'.")
+  
+  assert(opt.type, "Parameter 'type' not specified. It is necessary to set the encoder type: 'Z' or 'Y'.\nExample: type=Z th trainEncoder.lua")
   assert(string.upper(opt.type)=='Z' or string.upper(opt.type)=='Y',"Parameter 'type' must be 'Z' (encoder Z) or 'Y' (encoder Y).")
   
   -- Load parameters from config file
