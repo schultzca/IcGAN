@@ -52,27 +52,32 @@ Note: for speed purposes the whole dataset will be loaded into RAM during traini
 
 Download img_align_celeba.zip from http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html under the link "Align&Cropped Images".
 
-```unzip img_align_celeba.zip; cd ..
+```bash
+unzip img_align_celeba.zip; cd ..
 DATA_ROOT=celebA th data/preprocess_celebA.lua
 ```
 
 #### Training
 
 * Conditional GAN: parameters are already configured to run CelebA (dataset=celebA, dataRoot=celebA).
-	```th trainGAN.lua
+	```bash
+	th trainGAN.lua
 	```
 
 * Generate encoder dataset: 
-	```net=[GENERATOR_PATH] outputFolder=celebA/genDataset samples=182638 th data/generateEncoderDataset.lua
+	```bash
+	net=[GENERATOR_PATH] outputFolder=celebA/genDataset samples=182638 th data/generateEncoderDataset.lua
 	```
 	(GENERATOR_PATH example: checkpoints/celebA_25_net_G.t7)
 
 * Train encoder Z: 
-	```datasetPath=celebA/genDataset/ type=Z th trainEncoder.lua
+	```
+    datasetPath=celebA/genDataset/ type=Z th trainEncoder.lua
 	```
 
 * Train encoder Y: 
-	```datasetPath=celebA/ type=Y th trainEncoder.lua
+	```
+    datasetPath=celebA/ type=Y th trainEncoder.lua
 	```
 
 ### 1.2 Train with a digit dataset: MNIST
@@ -83,20 +88,24 @@ Download MNIST as a luarocks package: `luarocks install mnist`
 #### Training
 
 * Conditional GAN: 
-	```name=mnist dataset=mnist dataRoot=mnist th trainGAN.lua
+	```bash
+	name=mnist dataset=mnist dataRoot=mnist th trainGAN.lua
 	```
 
 * Generate encoder dataset: 
-	```net=[GENERATOR_PATH] outputFolder=mnist/genDataset samples=60000 th data/generateEncoderDataset.lua
+	```bash
+	net=[GENERATOR_PATH] outputFolder=mnist/genDataset samples=60000 th data/generateEncoderDataset.lua
 	```
 	(GENERATOR_PATH example: checkpoints/mnist_25_net_G.t7)
 
 * Train encoder Z: 
-	```datasetPath=mnist/genDataset/ type=Z th trainEncoder.lua
+	```
+    datasetPath=mnist/genDataset/ type=Z th trainEncoder.lua
 	```
 
 * Train encoder Y: 
-	```datasetPath=mnist type=Y th trainEncoder.lua
+	```
+    datasetPath=mnist type=Y th trainEncoder.lua
 	```
 
 ### 1.3 Train your own image dataset
@@ -114,7 +123,8 @@ The parameters for generating results are in `cfg/generateConfig.lua`.
 
 ![Reconstrucion example](https://github.com/Guim3/IcGAN/blob/master/images/celeba_reconstructions.png)
 
-```decNet=celeba_24_G.t7 encZnet=celeba_encZ_7.t7 encYnet=celeba_encY_5.t7 loadPath=[PATH_TO_REAL_IMAGES] th generation/reconstructWithVariations.lua
+```bash
+decNet=celeba_24_G.t7 encZnet=celeba_encZ_7.t7 encYnet=celeba_encY_5.t7 loadPath=[PATH_TO_REAL_IMAGES] th generation/reconstructWithVariations.lua
 ```
 
 ### 3.2 Swap attributes
@@ -123,14 +133,16 @@ The parameters for generating results are in `cfg/generateConfig.lua`.
 
 Swap the attribute information between two pairs of faces.
 
-```decNet=celeba_24_G.t7 encZnet=celeba_encZ_7.t7 encYnet=celeba_encY_5.t7 im1Path=[IM1] im2Path=[IM2] th generation/attributeTransfer.lua
+```bash
+decNet=celeba_24_G.t7 encZnet=celeba_encZ_7.t7 encYnet=celeba_encY_5.t7 im1Path=[IM1] im2Path=[IM2] th generation/attributeTransfer.lua
 ```
 
 ### 3.3 Interpolate between faces
 
 ![Interpolation](https://github.com/Guim3/IcGAN/blob/master/images/celeba_interpolations.png)
 
-```decNet=celeba_24_G.t7 encZnet=celeba_encZ_7.t7 encYnet=celeba_encY_5.t7 im1Path=[IM1] im2Path=[IM2] th generation/interpolate.lua
+```bash
+decNet=celeba_24_G.t7 encZnet=celeba_encZ_7.t7 encYnet=celeba_encY_5.t7 im1Path=[IM1] im2Path=[IM2] th generation/interpolate.lua
 ```
     
 
