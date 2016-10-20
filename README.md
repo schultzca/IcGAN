@@ -28,6 +28,7 @@ In order to interactively display the results, follow [these steps][7].
 ## 1. Training the model
 
 The IcGAN is trained in four steps. 
+
 1. Train the generator. 
 2. Create a dataset of generated images with the generator. 
 3. Train the encoder Z to map an image *x* to a latent representation *z* with the dataset generated images. 
@@ -52,10 +53,10 @@ DATA_ROOT=celebA th data/preprocess_celebA.lua```
 #### Training
 
 * Conditional GAN: parameters are already configured to run CelebA (dataset=celebA, dataRoot=celebA).
-`th trainGAN.lua`
+	`th trainGAN.lua`
 * Generate encoder dataset: 
-`net=[GENERATOR_PATH] outputFolder=celebA/genDataset samples=182638 th data/generateEncoderDataset.lua`
-(GENERATOR_PATH example: checkpoints/celebA_25_net_G.t7)
+	`net=[GENERATOR_PATH] outputFolder=celebA/genDataset samples=182638 th data/generateEncoderDataset.lua`
+	(GENERATOR_PATH example: checkpoints/celebA_25_net_G.t7)
 * Train encoder Z: `datasetPath=celebA/genDataset/ type=Z th trainEncoder.lua`
 * Train encoder Y: `datasetPath=celebA/ type=Y th trainEncoder.lua`
 
@@ -68,8 +69,8 @@ Download MNIST as a luarocks package: `luarocks install mnist`
 
 * Conditional GAN: `name=mnist dataset=mnist dataRoot=mnist th trainGAN.lua`
 * Generate encoder dataset: 
-`net=[GENERATOR_PATH] outputFolder=mnist/genDataset samples=60000 th data/generateEncoderDataset.lua`
-(GENERATOR_PATH example: checkpoints/mnist_25_net_G.t7)
+	`net=[GENERATOR_PATH] outputFolder=mnist/genDataset samples=60000 th data/generateEncoderDataset.lua`
+	(GENERATOR_PATH example: checkpoints/mnist_25_net_G.t7)
 * Train encoder Z: `datasetPath=mnist/genDataset/ type=Z th trainEncoder.lua`
 * Train encoder Y: `datasetPath=mnist type=Y th trainEncoder.lua`
 
