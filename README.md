@@ -7,16 +7,18 @@ This is the implementation of the IcGAN model proposed for my master dissertatio
 
 [*Invertible Conditional Generative Adversarial Networks.*][1] Guim Perarnau. September 2016.
 
+A shorter version, which we have submitted to the [NIPS 2016 Workshop on Adversarial Training][5], can be found [here][6].
+
 The baseline used is the [Torch implementation][2] of the [DCGAN by Radford et al][3].
 
 1. [Training the model](#1-training-the-model)
-	1. [Face dataset: CelebA](#11-face-dataset-celeba)
-	2. [Digit dataset: MNIST](#12-digit-dataset-mnist)
-2. [Pretrained CelebA model](#2-pretrained-model) 
+	1. [Train with a face dataset: CelebA](#11-face-dataset-celeba)
+	2. [Train with a digit dataset: MNIST](#12-digit-dataset-mnist)
+2. [Pre-trained CelebA model](#2-pretrained-celeba-model) 
 3. [Visualize the results](#3-visualize-the-results)
 	1. [Reconstruct and modify real images](#31-reconstruct-and-modify-real-images)
 	2. [Swap attributes](#32-swap-attributes)
-	3. [Interpolate between faces](#33-interpolate-faces)
+	3. [Interpolate between faces](#33-interpolate-between-faces)
 	
 
 ## Requisites
@@ -39,7 +41,7 @@ The IcGAN is trained in four steps.
 
 All the parameters of the training phase are located in cfg/mainConfig.lua.
 
-There is already a [pre-trained model for CelebA available](#2-pretrained-model) in case you want to skip the training part. [Here](#3-visualize-the-results) you can find instructions on how to use it.
+There is already a [pre-trained model for CelebA available](#2-pretrained-celeba-model) in case you want to skip the training part. [Here](#3-visualize-the-results) you can find instructions on how to use it.
 
 ### 1.1 Train with a face dataset: CelebA
 
@@ -106,8 +108,8 @@ Download MNIST as a luarocks package: `luarocks install mnist`
     datasetPath=mnist type=Y th trainEncoder.lua
 	```
 
-## 2 Pre-trained model download:
-CelebA model is available [here](https://mega.nz/#!nM5xRQLJ!HWyNgz9VNXjGFyQ2ujpVMPyQCTVHnzI64TpFfSfUqCI). The file includes the generator and both encoders (encoder Z and encoder Y).
+## 2 Pre-trained CelebA model:
+CelebA model is available for download [here](https://mega.nz/#!nM5xRQLJ!HWyNgz9VNXjGFyQ2ujpVMPyQCTVHnzI64TpFfSfUqCI). The file includes the generator and both encoders (encoder Z and encoder Y).
 
 
 ## 3. Visualize the results
