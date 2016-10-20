@@ -31,28 +31,24 @@ for filename in fileIterator:lines() do
     end
 end
 
+local outSz = 64
 -- Open first image to get its sizes
 local im = image.load(data.. '/' .. imNames[1]):float()
 
-local x1, y1 = 30, 40
-im = image.crop(im, x1, y1, x1 + 138, y1 + 138)
-im = image.scale(im, 64, 64)
-image.save(data.. '/' ..imNames[1], im)
-
 -- Initialize output container
-local images = torch.FloatTensor(#imNames, im:size(1), im:size(2), im:size(3))
+local images = torch.FloatTensor(#imNames, im:size(1), outSz, outSz)
 
-images[{{1},{},{},{}}] = im
-
+local x1, y1 = 30, 40
 for i, name in ipairs(imNames) do
     im = image.load(data.. '/' .. imNames[i], im:size(1), 'float')
     im = image.crop(im, x1, y1, x1 + 138, y1 + 138)
-    im = image.scale(im, 64, 64)
+    im = image.scale(im, outSz, outSz)
     image.save(data.. '/' ..imNames[i], im)
     images[{{i},{},{},{}}] = im
     print(i)
 end
 
+print('Saving...')
 torch.save(dataroot..'/images.dmp', images)
 torch.save(dataroot..'/imNames.dmp', imNames)
-
+print('Done!')
