@@ -5,6 +5,8 @@ disp = require 'display'
 torch.setdefaulttensortype('torch.FloatTensor')
 
 assert(loadfile("cfg/generateConfig.lua"))(3)
+-- one-line argument parser. Parses environment variables to override the defaults
+for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
 
 local function applyThreshold(Y, th)
     -- Takes a matrix Y and thresholds, given th, to -1 and 1
@@ -79,7 +81,7 @@ end
 -- Generate interpolations
 local outX = generator:forward{Z, Y}:float()
 
-local container = torch.Tensor(opt.nInterpolations+4, imgSz[1], imgSz[2], imgSz[3])
+local container = torch.Tensor(opt.nInterpolations+4, opt.loadSize[1], opt.loadSize[2], opt.loadSize[3])
 container[{{1}}]:copy(inputX[{{1}}])
 container[{{container:size(1)}}]:copy(inputX[{{2}}])
 for i=1,opt.nInterpolations+2 do

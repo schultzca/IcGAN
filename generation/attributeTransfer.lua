@@ -12,6 +12,8 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 -- Load parameters from config file
 assert(loadfile("cfg/generateConfig.lua"))(2)
+-- one-line argument parser. Parses environment variables to override the defaults
+for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
 
 local function applyThreshold(Y, th)
     -- Takes a matrix Y and thresholds, given th, to -1 and 1
@@ -77,7 +79,7 @@ Y[{{3},{}}]:copy(Y[{{2},{}}]); Y[{{4},{}}]:copy(Y[{{1},{}}])
 applyThreshold(Y,0)
 local outX = generator:forward{Z, Y}:float()
 
-local container = torch.Tensor(6, imgSz[1], imgSz[2], imgSz[3])
+local container = torch.Tensor(6, opt.loadSize[1], opt.loadSize[2], opt.loadSize[3])
 container[{{1}}]:copy(inputX[{{1}}])
 container[{{2}}]:copy(outX[{{1}}])
 container[{{3}}]:copy(outX[{{3}}])
