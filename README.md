@@ -12,7 +12,6 @@ The baseline used is the [Torch implementation][2] of the [DCGAN by Radford et a
 1. [Training the model](#1-training-the-model)
 	1. [Face dataset: CelebA](#11-face-dataset-celeba)
 	2. [Digit dataset: MNIST](#12-digit-dataset-mnist)
-	3. [Use your own image dataset](#13-use-your-own-image-dataset)
 2. [Pretrained CelebA model](#2-pretrained-model) 
 3. [Visualize the results](#3-visualize-the-results)
 	1. [Reconstruct and modify real images](#31-reconstruct-and-modify-real-images)
@@ -106,8 +105,6 @@ Download MNIST as a luarocks package: `luarocks install mnist`
 	```
     datasetPath=mnist type=Y th trainEncoder.lua
 	```
-
-### 1.3 Train your own image dataset
 
 ## 2 Pre-trained model download:
 CelebA model is available [here](https://mega.nz/#!nM5xRQLJ!HWyNgz9VNXjGFyQ2ujpVMPyQCTVHnzI64TpFfSfUqCI). The file includes the generator and both encoders (encoder Z and encoder Y).
