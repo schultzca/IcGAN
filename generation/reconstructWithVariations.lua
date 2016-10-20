@@ -6,6 +6,8 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 -- Load parameters from config file
 assert(loadfile("cfg/generateConfig.lua"))(1)
+-- one-line argument parser. Parses environment variables to override the defaults
+for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
 
 local function applyThreshold(Y, th)
     -- Takes a matrix Y and thresholds, given th, to -1 and 1
@@ -208,6 +210,15 @@ local outputImage = torch.cat(inputX[{{1}}],reconstX[{{1}}], 1):cat(outX[{{1,ny}
 for i=2,opt.nImages do
   local tmp = torch.cat(inputX[{{i}}],reconstX[{{i}}], 1):cat(outX[{{(i-1)*ny+1,i*ny}}],1)
   outputImage = outputImage:cat(tmp, 1)
+end
+
+if string.lower(opt.dataset) == 'celeba' then
+  local str_list = {'bald', 'bangs', 'black hair', 'blond', 'brown', 'eyebrows', 'eyeglasses', 'gray', 'makeup', 'male', 'mouth open', 'mustache', 'pale skin', 'receding hairline', 'smiling', 'straight hair', 'wavy hair', 'hat'}
+  print('Column order: ')
+  print("1. Original\n2. Reconstruction")
+  for i=1,#str_list do
+    print(("%d. %s"):format(i+2, str_list[i]))
+  end
 end
 
 disp.image(image.toDisplayTensor(outputImage,0,ny+2))
