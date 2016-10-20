@@ -19,7 +19,7 @@ opt = {
    ntrain = math.huge,     -- #  of examples per epoch. math.huge for full dataset
    gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
    noise = 'normal',       -- uniform / normal
-   dataRoot = 'celebA',    -- path to the dataset images, except for not mnist. If mnist, just put 'mnist'
+   dataRoot = 'celebA',    -- path to the dataset images, except for mnist. If mnist, just put 'mnist'
    randomCrop = false,     -- true = crop randomly the samples of the dataset (celebA only)
    fineSize = 64,          -- size of the image crop (as long as randomCrop == true)
    -- Miscellaneous parameters
@@ -38,7 +38,7 @@ opt = {
   type = 'Z',                  -- encoder type. 'Z': encoder Z: image X to latent representation Z | 'Y': encoder Y: image X to attribute vector Y
   batchSize = 64,
   outputPath = 'checkpoints/', -- path used to store the encoder network
-  datasetPath = 'celebA/genDataset/', -- folder where the dataset files are stored (not the files themselves)
+  datasetPath = 'celebA/genDataset/', -- folder where the dataset of generated images is stored (not the files themselves)
                               -- for encoder Z you need the file grountruth.dmp (obtained with data/generateEncoderDataset.lua)
   split = 0.66,               -- split between train and test (e.g. 0.66 = 66% train, 33% test)
   nConvLayers = 4,            -- # of convolutional layers on the net
@@ -60,19 +60,24 @@ opt = {
   type = 'Y',                  -- encoder type. 'Z': encoder Z: image X to latent representation Z | 'Y': encoder Y: image X to attribute vector Y
   batchSize = 64,
   outputPath = 'checkpoints/', -- path used to store the encoder network
-  datasetPath = 'celebA/genDataset/', -- folder where the dataset files are stored (not the files themselves)
-                              -- for encoder Y you need the file images.dmp (data/preprocess_celebA.lua) and imLabels.dmp (data/donkey_celebA.lua)
-  split = 0.66,               -- split between train and test (e.g. 0.66 = 66% train, 33% test)
-  nConvLayers = 4,            -- # of convolutional layers on the net
-  nf = 32,                    -- # of filters in hidden layer
-  FCsz = 512,                 -- size of the last fully connected layer. If nil, size will be the same as previous FC layer.
-  nEpochs = 15,               -- # of epochs
-  lr = 0.0001,                -- initial learning rate for adam
-  beta1 = 0.1,                -- momentum term of adam
-  gpu = 1,                    -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
+  datasetPath = 'celebA/',     -- For CelebA: there's expected to find in path a file named images.dmp and imLabels.dmp
+                               --     which contains the images X and attribute vectors Y.
+                               --     images.dmp is obtained running data/preprocess_celebA.lua
+                               --     imLabels.dmp is obtained running trainGAN.lua via data/donkey_celebA.lua
+                               --     for encoder Y you need the file images.dmp (data/preprocess_celebA.lua) and imLabels.dmp (data/donkey_celebA.lua)
+                               -- For MNIST: just write 'mnist'. It will use the mnist luarocks package
+  imSize = 64,                 -- (type == 'Y' only) real input images will be scaled up/down to this size
+  split = 0.66,                -- split between train and test (e.g. 0.66 = 66% train, 33% test)
+  nConvLayers = 4,             -- # of convolutional layers on the net
+  nf = 32,                     -- # of filters in hidden layer
+  FCsz = 512,                  -- size of the last fully connected layer. If nil, size will be the same as previous FC layer.
+  nEpochs = 15,                -- # of epochs
+  lr = 0.0001,                 -- initial learning rate for adam
+  beta1 = 0.1,                 -- momentum term of adam
+  gpu = 1,                     -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
   -- Miscellaneous
-  display = 1,                -- display 1 = train and test error, 2 = error + batch input images, 0 = false
-  poweroff = 0,               -- 1 = power off computer after training, 0 = not power off  
+  display = 1,                 -- display 1 = train and test error, 2 = error + batch input images, 0 = false
+  poweroff = 0,                -- 1 = power off computer after training, 0 = not power off  
   
   }
 elseif option == 3 then

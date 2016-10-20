@@ -61,20 +61,59 @@ local function readDatasetZ(path)
     return X, Z
 end
 
-local function readDatasetY(path)
--- There's expected to find in path a file named images.dmp and imLabels.dmp
--- which contains the images X and attribute vectors Y.
--- images.dmp is obtained through data/preprocess_celebA.lua
--- imLabels.dmp is obtained through trainGAN.lua via data/donkey_celebA.lua
+local function readDatasetY(path, imSize)
+-- For CelebA: there's expected to find in path a file named images.dmp and imLabels.dmp
+--     which contains the images X and attribute vectors Y.
+--     images.dmp is obtained running data/preprocess_celebA.lua
+--     imLabels.dmp is obtained running trainGAN.lua via data/donkey_celebA.lua
+--     for encoder Y you need the file images.dmp (data/preprocess_celebA.lua) and imLabels.dmp (data/donkey_celebA.lua)
+-- For MNIST: It will use the mnist luarocks package
+  local X, Y
+  if string.lower(path) == 'mnist' or string.lower(path) == 'mnist/' then
+      local mnist = require 'mnist'
+      local trainSet = mnist.traindataset()
+      X = torch.Tensor(trainSet.data:size(1), 1, imSize, imSize)
+      local resize = trainSet.data:size(2) ~= imSize
+      
+      local labels = trainSet.label:int()
+      Y = torch.IntTensor(trainSet.data:size(1), 10):fill(-1)
+      
+      for i = 1,trainSet.data:size(1) do
+          -- Read MNIST images
+          local im = trainSet.data[{{i}}]
+          if resize then
+            im = image.scale(im, imSize, imSize):float()
+          end
+          im:div(255):mul(2):add(-1) -- change [0, 255] to [-1, 1]
+          X[{{i}}]:copy(im)
+          
+          --Read MNIST labels
+          local class = trainSet.label[i] -- Convert 0-9 to one-hot vector
+          Y[{{i},{class+1}}] = 1
+      end
 
-    print('Loading images X from '..path..'images.dmp')
-    local X = torch.load(path..'images.dmp')
-    print(('Done. Loaded %.2f GB (%d images).'):format((4*X:size(1)*X:size(2)*X:size(3)*X:size(4))/2^30, X:size(1)))
-    X:mul(2):add(-1) -- make it [0, 1] -> [-1, 1]
-    
-    print('Loading attributes Y from '..path..'imLabels.dmp')
-    local Y = torch.load(path..'imLabels.dmp')
-    print(('Done. Loaded %d attributes'):format(Y:size(1)))
+  else
+      print('Loading images X from '..path..'images.dmp')
+      local data = torch.load(path..'images.dmp')
+      print(('Done. Loaded %.2f GB (%d images).'):format((4*data:size(1)*data:size(2)*data:size(3)*data:size(4))/2^30, data:size(1)))
+      
+      if data:size(3) ~= imSize then
+          -- Resize images
+          X = torch.Tensor(data:size(1), imSize, imSize)
+          for i = 1,data:size(1) do
+              local im = image.scale(data[{{i}}], imSize, imSize)
+              im:mul(2):add(-1) -- change [0, 1] -to[-1, 1]    
+              X[{{i}}]:copy(im)
+          end
+      else
+          X = data
+          X:mul(2):add(-1) -- change [0, 1] to [-1, 1]  
+      end      
+      
+      print('Loading attributes Y from '..path..'imLabels.dmp')
+      Y = torch.load(path..'imLabels.dmp')
+      print(('Done. Loaded %d attributes'):format(Y:size(1)))
+  end
     
     return X, Y
 end
@@ -183,7 +222,7 @@ function main()
   if string.upper(opt.type)=='Z' then
       X, Y = readDatasetZ(opt.datasetPath)
   else 
-      X, Y = readDatasetY(opt.datasetPath)
+      X, Y = readDatasetY(opt.datasetPath, opt.imSize)
   end
   
   -- Split train and test
