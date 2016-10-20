@@ -3,8 +3,7 @@ Invertible Conditional GANs
 
 ![A real image is encoded into a latent representation z and conditional information y, and then decoded into a new image. We fix z for every row, and modify y for each column to obtain variations in real samples.](https://raw.githubusercontent.com/Guim3/BcGAN/master/images/celeba_samples.png)
 
-This is the implementation of the IcGAN model proposed in my master dissertation
-from September 2016:
+This is the implementation of the IcGAN model proposed for my master dissertation:
 
 [*Invertible Conditional Generative Adversarial Networks.*][1] Guim Perarnau. September 2016.
 
