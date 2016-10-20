@@ -66,7 +66,7 @@ opt = {
                                --     imLabels.dmp is obtained running trainGAN.lua via data/donkey_celebA.lua
                                --     for encoder Y you need the file images.dmp (data/preprocess_celebA.lua) and imLabels.dmp (data/donkey_celebA.lua)
                                -- For MNIST: just write 'mnist'. It will use the mnist luarocks package
-  imSize = 64,                 -- (type == 'Y' only) real input images will be scaled up/down to this size
+  loadSize = 64,               -- (type == 'Y' only) real input images will be scaled up/down to this size. Should be equal to loadSize from trainGAN.lua (option 0)
   split = 0.66,                -- split between train and test (e.g. 0.66 = 66% train, 33% test)
   nConvLayers = 4,             -- # of convolutional layers on the net
   nf = 32,                     -- # of filters in hidden layer

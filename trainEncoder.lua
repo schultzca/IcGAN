@@ -222,7 +222,7 @@ function main()
   if string.upper(opt.type)=='Z' then
       X, Y = readDatasetZ(opt.datasetPath)
   else 
-      X, Y = readDatasetY(opt.datasetPath, opt.imSize)
+      X, Y = readDatasetY(opt.datasetPath, opt.loadSize)
   end
   
   -- Split train and test
