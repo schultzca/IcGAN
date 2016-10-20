@@ -27,6 +27,7 @@ else
       decNet = 'checkpoints/',  -- path to the generator network
       encZnet = 'checkpoints/', -- path to encoder Z network
       encYnet = 'checkpoints/', -- path to encoder Y network
+      loadSize = {3, 64, 64},   -- image dimensions CxHxW  used as input (output) by the encoders (generator).
       gpu = 1,                  -- gpu mode. 0 = CPU, 1 = GPU
       nz = 100,                 -- Z latent vector length 
   }
@@ -35,7 +36,7 @@ else
   -- Reconstruct images with encoder + generator and obtain variations on them (generation/reconstructWithVariations.lua)
   opt = {
       nImages = 50,             -- number of samples to produce (only valid if loadOption != 1)
-      loadOption = 2,           -- 0 = only generated images used, 1 = load input image, 2 = load multiple input images
+      loadOption = 2,           -- 1 = load input image, 2 = load multiple input images
       loadPath = '', -- loadOption == 1: path to single image, loadOption==2: path to folder with images
       name = 'encoder_disentangle',
       -- Conditional GAN parameters

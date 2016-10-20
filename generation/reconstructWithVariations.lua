@@ -146,10 +146,6 @@ local generator = torch.load(opt.decNet)
 local encZ = torch.load(opt.encZnet)
 local encY = torch.load(opt.encYnet)
 
-local imgSz = {generator.output:size()[2], generator.output:size()[3], generator.output:size()[4]}
-
-local inputX = torch.Tensor(opt.nImages, imgSz[1], imgSz[2], imgSz[3]):zero()
-
 -- Load to GPU
 if opt.gpu > 0 then
     cudnn.convert(generator, cudnn)
@@ -164,17 +160,12 @@ generator:evaluate()
 encZ:evaluate()
 encY:evaluate()
 
--- Load / generate X
-if opt.loadOption == 0 then
-  -- Generate X randomly from random Z and Y and then encoded it
-  Z:normal(0,1)
-  sampleY(Y, opt.dataset, ny, opt.nImages)
-  inputX = generator:forward{Z, Y}:clone()
-else
-  -- Encode Z and Y from a given set of images
-  inputX = obtainImageSet(inputX, opt.loadPath, opt.loadOption, imgExtension)
-  if opt.gpu > 0 then inputX = inputX:cuda() end
-end
+local inputX = torch.Tensor(opt.nImages, opt.loadSize[1], opt.loadSize[2], opt.loadSize[3])
+
+-- Encode Z and Y from a given set of images
+inputX = obtainImageSet(inputX, opt.loadPath, opt.loadOption, imgExtension)
+if opt.gpu > 0 then inputX = inputX:cuda() end
+
 
 local Z = encZ:forward(inputX)
 local Y = encY:forward(inputX)

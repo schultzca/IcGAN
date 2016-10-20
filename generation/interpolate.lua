@@ -36,9 +36,7 @@ local generator = torch.load(opt.decNet)
 local encZ = torch.load(opt.encZnet)
 local encY = torch.load(opt.encYnet)
 
-local imgSz = {generator.output:size()[2], generator.output:size()[3], generator.output:size()[4]}
-
-local inputX = torch.Tensor(2, imgSz[1], imgSz[2], imgSz[3])
+local inputX = torch.Tensor(2, opt.loadSize[1], opt.loadSize[2], opt.loadSize[3])
 local Z = torch.Tensor(opt.nInterpolations+2, opt.nz, 1, 1)
 local Y = torch.Tensor(opt.nInterpolations+2, ny):fill(-1)
 
