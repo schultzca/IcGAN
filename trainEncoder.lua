@@ -25,6 +25,10 @@ local function getParameters()
       assert(loadfile("cfg/mainConfig.lua"))(2)
   end
   
+  -- one-line argument parser. Parses environment variables to override the defaults
+  for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
+  print(opt)
+  
   if opt.display then display = require 'display' end
   
   return opt
