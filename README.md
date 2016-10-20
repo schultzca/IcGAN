@@ -8,8 +8,6 @@ from September 2016:
 
 [*Invertible Conditional Generative Adversarial Networks.*][1] Guim Perarnau. September 2016.
 
-[//]: <> (A shorter version, which we have submitted to the [NIPS 2016 Workshop on Adversarial Training][5], can be found [here][6]. <- Treure parèntesis i [//] per descomentar)
-
 The baseline used is the [Torch implementation][2] of the [DCGAN by Radford et al][3].
 
 1. [Training the model](#1-training-the-model)
