@@ -12,7 +12,6 @@ The baseline used is the [Torch implementation][2] of the [DCGAN by Radford et a
 1. [Training the model](#1-training-the-model)
 	1. [Face dataset: CelebA](#11-train-with-a-face-dataset-celeba)
 	2. [Digit dataset: MNIST](#12-train-with-a-digit-dataset-mnist)
-	3. [Use your own image dataset](#13-train-your-own-image-dataset)
 3. [Visualize the results](#3-visualize-the-results)
 	1. [Reconstruct and modify real images](#31-reconstruct-and-modify-real-images)
 	2. [Swap attributes](#32-swap-attributes)
