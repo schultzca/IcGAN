@@ -43,7 +43,7 @@ local function sampleY(outY, dataset, threshold, inY)
   local nSamples = outY:size(1)
   local ny = outY:size(2)
   if string.lower(dataset) == 'celeba' then
-      local genderIdx = 11 -- This index is obtained from donkey_celebA.
+      local genderIdx = 10 -- This index is obtained from donkey_celebA.
       local genderConfidence = 100*inY[{{},{genderIdx}}]
       if threshold then
           -- Convert Y to binary [-1, 1] vector
