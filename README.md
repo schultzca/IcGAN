@@ -29,6 +29,8 @@ In order to interactively display the results, follow [these steps][7].
 
 ## 1. Training the model
 
+![Model overview](https://github.com/Guim3/IcGAN/blob/master/images/model_overview.png)
+
 The IcGAN is trained in four steps. 
 
 1. Train the generator. 
