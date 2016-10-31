@@ -66,7 +66,6 @@ local function readDatasetY(path, imSize)
 --     which contains the images X and attribute vectors Y.
 --     images.dmp is obtained running data/preprocess_celebA.lua
 --     imLabels.dmp is obtained running trainGAN.lua via data/donkey_celebA.lua
---     for encoder Y you need the file images.dmp (data/preprocess_celebA.lua) and imLabels.dmp (data/donkey_celebA.lua)
 -- For MNIST: It will use the mnist luarocks package
   local X, Y
   if string.lower(path) == 'mnist' or string.lower(path) == 'mnist/' then
