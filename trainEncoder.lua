@@ -238,13 +238,13 @@ function main()
  
   -- Initialize batches
   local batchX = torch.Tensor(opt.batchSize, xTrain:size(2), xTrain:size(3), xTrain:size(4))
-  local batchZ = torch.Tensor(opt.batchSize, yTrain:size(2))
+  local batchY = torch.Tensor(opt.batchSize, yTrain:size(2))
   
   -- Copy variables to GPU
   if opt.gpu > 0 then
      require 'cunn'
      cutorch.setDevice(opt.gpu)
-     batchX = batchX:cuda();  batchZ = batchZ:cuda();
+     batchX = batchX:cuda();  batchY = batchY:cuda();
      
      if pcall(require, 'cudnn') then
         require 'cudnn'
@@ -266,8 +266,8 @@ function main()
       gradParams:zero()
       
       local outputs = encoder:forward(batchX)
-      errorTrain = criterion:forward(outputs, batchZ)
-      local dloss_doutput = criterion:backward(outputs, batchZ)
+      errorTrain = criterion:forward(outputs, batchY)
+      local dloss_doutput = criterion:backward(outputs, batchY)
       encoder:backward(batchX, dloss_doutput)
       
       return errorTrain, gradParams
@@ -293,7 +293,7 @@ function main()
       for batch = 1, nTrainSamples-opt.batchSize+1, opt.batchSize  do
           tm:reset()
           
-          batchX, batchZ = assignBatches(batchX, batchZ, xTrain, yTrain, batch, opt.batchSize, shuffle)
+          batchX, batchY = assignBatches(batchX, batchY, xTrain, yTrain, batch, opt.batchSize, shuffle)
           
           if opt.display == 2 and batchIterations % 20 == 0 then
               display.image(image.toDisplayTensor(batchX,0,torch.round(math.sqrt(opt.batchSize))), {win=2, title='Train mini-batch'})
@@ -305,10 +305,10 @@ function main()
           -- Display train and test error
           if opt.display and batchIterations % 20 == 0 then
               -- Test error
-              batchX, batchZ = assignBatches(batchX, batchZ, xTest, yTest, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
+              batchX, batchY = assignBatches(batchX, batchY, xTest, yTest, torch.random(1,nTestSamples-opt.batchSize+1), opt.batchSize, torch.randperm(nTestSamples))
               
               local outputs = encoder:forward(batchX)
-              errorTest = criterion:forward(outputs, batchZ)
+              errorTest = criterion:forward(outputs, batchY)
               table.insert(errorData,
               {
                 batchIterations/math.ceil(nTrainSamples / opt.batchSize), -- x-axis
