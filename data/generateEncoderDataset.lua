@@ -158,9 +158,7 @@ local function initializeNet(net, opt)
   else
       net:float()
   end
-  local sampleInput = {Z:narrow(1,1,2), Y:narrow(1,1,2)}
-  optnet.optimizeMemory(net, sampleInput)
-  
+    
   -- Refresh mean and std from BN layers. This needs to be done at least once after training.
   if not net.__BNrefreshed then
       -- There's no need to do this more than once. Once the network with
@@ -170,6 +168,9 @@ local function initializeNet(net, opt)
       stabilizeBN(net,{Z,Y},'normal',imLabels)
       torch.save(opt.net, net)
   end
+  
+  local sampleInput = {Z:narrow(1,1,2), Y:narrow(1,1,2)}
+  optnet.optimizeMemory(net, sampleInput)
     
   -- Put network to evaluate mode so batch normalization layers 
   -- do not change its parameters on test time.
