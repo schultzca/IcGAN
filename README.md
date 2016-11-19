@@ -147,6 +147,21 @@ decNet=celeba_24_G.t7 encZnet=celeba_encZ_7.t7 encYnet=celeba_encY_5.t7 im1Path=
 ```
     
 
+Do you like or use our work? Please cite us as
+
+``` latex
+@article{Perarnau2016,
+  author    = {Guim Perarnau and
+               Joost van de Weijer and
+               Bogdan Raducanu and
+               Jose M. \'Alvarez},
+  title     = {{Invertible Conditional GANs for image editing}},
+  journal   = {NIPS Workshop on Adversarial Training},
+  year      = {2016},
+}
+``` 
+
+
 [0]: https://sites.google.com/site/nips2016adversarial/WAT16_paper_8.pdf?attredirects=0
 [1]: https://drive.google.com/file/d/0B48XS5sLi1OlRkRIbkZWUmdoQmM/view
 [2]: https://github.com/soumith/dcgan.torch
