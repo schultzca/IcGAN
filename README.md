@@ -3,9 +3,13 @@ Invertible Conditional GANs
 
 ![A real image is encoded into a latent representation z and conditional information y, and then decoded into a new image. We fix z for every row, and modify y for each column to obtain variations in real samples.](https://raw.githubusercontent.com/Guim3/BcGAN/master/images/celeba_samples.png)
 
-This is the implementation of the IcGAN model proposed for my master dissertation:
+This is the implementation of the IcGAN model proposed in our paper:
 
-[*Invertible Conditional Generative Adversarial Networks.*][1] Guim Perarnau. September 2016.
+[*Invertible Conditional GANs for image editing.*][0] November 2016.
+
+This paper is a summarized and updated version of my master thesis, which you can find here:
+
+[*Master thesis: Invertible Conditional Generative Adversarial Networks.*][1] September 2016.
 
 The baseline used is the [Torch implementation][2] of the [DCGAN by Radford et al][3].
 
@@ -143,7 +147,8 @@ decNet=celeba_24_G.t7 encZnet=celeba_encZ_7.t7 encYnet=celeba_encY_5.t7 im1Path=
 ```
     
 
-[1]: https://www.overleaf.com/read/hgvnqhyyscpc
+[0]: https://sites.google.com/site/nips2016adversarial/WAT16_paper_8.pdf?attredirects=0
+[1]: https://drive.google.com/file/d/0B48XS5sLi1OlRkRIbkZWUmdoQmM/view
 [2]: https://github.com/soumith/dcgan.torch
 [3]: https://arxiv.org/abs/1511.06434
 [4]: https://github.com/soumith/dcgan.torch#prerequisites 
