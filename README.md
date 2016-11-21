@@ -29,7 +29,7 @@ Additionally, you will need to install the `threads` package:
 
 `luarocks install threads`
 
-In order to interactively display the results, follow [these steps][7].
+In order to interactively display the results, follow [these steps][6].
 
 ## 1. Training the model
 
@@ -48,12 +48,12 @@ There is already a [pre-trained model for CelebA available](#2-pretrained-celeba
 
 ### 1.1 Train with a face dataset: CelebA
 
-Note: for speed purposes the whole dataset will be loaded into RAM during training time, which requires about 10 GB of RAM. Therefore, 12 GB of RAM is a minimmum requirement. Also, the dataset will be stored as a tensor to load it faster, make sure that you have around 25 GB of free space.
+Note: for speed purposes, the whole dataset will be loaded into RAM during training time, which requires about 10 GB of RAM. Therefore, 12 GB of RAM is a minimum requirement. Also, the dataset will be stored as a tensor to load it faster, make sure that you have around 25 GB of free space.
 
 #### Preprocess
 `mkdir celebA; cd celebA`
 
-Download img_align_celeba.zip from http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html under the link "Align&Cropped Images".
+Download img_align_celeba.zip [here](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) under the link "Align&Cropped Images".
 
 ```bash
 unzip img_align_celeba.zip; cd ..
@@ -117,8 +117,8 @@ CelebA model is available for download [here](https://mega.nz/#!nM5xRQLJ!HWyNgz9
 
 ## 3. Visualize the results
 
-For visualizing the results you will need an IcGAN already trained (i.e. a generator and two encoders).
-The parameters for generating results are in `cfg/generateConfig.lua`.
+For visualizing the results you will need an already trained IcGAN (i.e. a generator and two encoders).
+The parameters for generating results are in [`cfg/generateConfig.lua`](cfg/generateConfig.lua).
 
 ### 3.1 Reconstruct and modify real images
 
@@ -168,5 +168,4 @@ Do you like or use our work? Please cite us as
 [3]: https://arxiv.org/abs/1511.06434
 [4]: https://github.com/soumith/dcgan.torch#prerequisites 
 [5]: https://sites.google.com/site/nips2016adversarial/
-[6]: link_pending
-[7]: https://github.com/soumith/dcgan.torch#display-ui
+[6]: https://github.com/soumith/dcgan.torch#display-ui
