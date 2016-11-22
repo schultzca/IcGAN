@@ -162,7 +162,7 @@ Do you like or use our work? Please cite us as
 ``` 
 
 
-[0]: https://sites.google.com/site/nips2016adversarial/WAT16_paper_8.pdf?attredirects=0
+[0]: https://arxiv.org/abs/1611.06355
 [1]: https://drive.google.com/file/d/0B48XS5sLi1OlRkRIbkZWUmdoQmM/view
 [2]: https://github.com/soumith/dcgan.torch
 [3]: https://arxiv.org/abs/1511.06434
