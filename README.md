@@ -25,9 +25,11 @@ The baseline used is the [Torch implementation][2] of the [DCGAN by Radford et a
 ## Requisites
 
 Please refer to [DCGAN torch repository][4] to know the requirements and dependencies to run the code.
-Additionally, you will need to install the `threads` package: 
+Additionally, you will need to install the `threads` and `optnet` package: 
 
 `luarocks install threads`
+
+`luarocks install optnet`
 
 In order to interactively display the results, follow [these steps][6].
 
