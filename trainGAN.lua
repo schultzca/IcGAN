@@ -22,7 +22,8 @@ end
 
 if opt.saveGif > 0 then paths.mkdir('gif') end
 
-torch.setnumthreads(1)
+opt.nThreads = 1 -- Do not change this parameter. This code can only use 1 thread for data handling.
+torch.setnumthreads(opt.nThreads)
 torch.setdefaulttensortype('torch.FloatTensor')
 assert(opt.fineSize >= 8, "Minimum fineSize is 8x8.")
 assert(opt.fineSize == 8 or opt.fineSize == 16 or opt.fineSize == 32 or opt.fineSize == 64 or opt.fineSize == 128 or opt.fineSize == 256 or opt.fineSize == 512 or opt.fineSize == 1024, "fineSize must be a power of 2.")
