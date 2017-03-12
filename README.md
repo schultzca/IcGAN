@@ -71,7 +71,7 @@ DATA_ROOT=celebA th data/preprocess_celebA.lua
 
 * Generate encoder dataset: 
 	```bash
-	net=[GENERATOR_PATH] outputFolder=celebA/genDataset samples=182638 th data/generateEncoderDataset.lua
+	net=[GENERATOR_PATH] outputFolder=celebA/genDataset/ samples=182638 th data/generateEncoderDataset.lua
 	```
 	(GENERATOR_PATH example: checkpoints/celebA_25_net_G.t7)
 
