@@ -99,7 +99,7 @@ Download MNIST as a luarocks package: `luarocks install mnist`
 
 * Generate encoder dataset: 
 	```bash
-	net=[GENERATOR_PATH] outputFolder=mnist/genDataset samples=60000 th data/generateEncoderDataset.lua
+	net=[GENERATOR_PATH] outputFolder=mnist/genDataset/ samples=60000 th data/generateEncoderDataset.lua
 	```
 	(GENERATOR_PATH example: checkpoints/mnist_25_net_G.t7)
 
