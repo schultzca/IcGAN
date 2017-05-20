@@ -46,7 +46,7 @@ The IcGAN is trained in four steps.
 
 All the parameters of the training phase are located in cfg/mainConfig.lua.
 
-There is already a [pre-trained model for CelebA available](#2-pretrained-celeba-model) in case you want to skip the training part. [Here](#3-visualize-the-results) you can find instructions on how to use it.
+There is already a [pre-trained model for CelebA available](#2-pre-trained-celeba-model) in case you want to skip the training part. [Here](#3-visualize-the-results) you can find instructions on how to use it.
 
 ### 1.1 Train with a face dataset: CelebA
 
