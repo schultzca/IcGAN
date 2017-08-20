@@ -56,11 +56,19 @@ Note: for speed purposes, the whole dataset will be loaded into RAM during train
 `mkdir celebA; cd celebA`
 
 Download img_align_celeba.zip [here](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) under the link "Align&Cropped Images".
+Also, you will need to download `list_attr_celeba.txt` from the same link, which is found under `Anno` folder.
 
 ```bash
 unzip img_align_celeba.zip; cd ..
 DATA_ROOT=celebA th data/preprocess_celebA.lua
 ```
+
+Now move `list_attr_celeba.txt` to `celebA` folder.
+
+```bash
+mv list_attr_celeba.txt celebA
+```
+
 
 #### Training
 
